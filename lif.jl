@@ -40,14 +40,30 @@ function update!(n::Neuron, I_ext::Float64, dt::Float64)
     return false
 end
 
+# Input stimulation functions
+function constant_input(t::Float64, amplitude::Float64=25.0, start_time::Float64=10.0)
+    return t > start_time ? amplitude : 0.0
+end
+
+
+function linear_input(t::Float64, slope::Float64=0.5, start_time::Float64=10.0)
+    return t > start_time ? slope * (t - start_time) : 0.0
+end
+
+
+
+
 n = Neuron()
 dt = 0.1
 duration = 100.0
 times = 0:dt:duration
 volts = Float64[]
 
+
+input_func = (t) -> constant_input(t, 25.0, 5.0)
+
 for t in times
-    I_ext = t > 10.0 ? 25.0 : 0.0 # Stimulation starts after 10ms
+    I_ext = input_func(t) 
     fired = update!(n, I_ext, dt)
     push!(volts, n.v)
 end
