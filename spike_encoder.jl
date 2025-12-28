@@ -4,8 +4,8 @@ using Statistics
 gr()
 
 
-PATIENT = "104"
-SESSION = "s0306lre"
+PATIENT = "121"
+SESSION = "s0311lre"
 
 
 struct Spike 
@@ -82,7 +82,7 @@ end
 
 raw_signal = load_raw_signal(PATIENT, SESSION)
 filtered_signal = get_filtered_signal(raw_signal)
-spiketrain = delta_modulation(filtered_signal)
+spiketrain = delta_modulation(filtered_signal; Δ=100)
 
 display(plot_spiketrain_demo(filtered_signal, spiketrain))
 println("Press Enter to close plot...")

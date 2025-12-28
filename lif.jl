@@ -51,8 +51,6 @@ function linear_input(t::Float64, slope::Float64=0.5, start_time::Float64=10.0)
 end
 
 
-
-
 n = Neuron()
 dt = 0.1
 duration = 100.0
