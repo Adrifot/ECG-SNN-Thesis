@@ -3,6 +3,8 @@ using DSP
 PATIENT = "169"
 SESSION = "s0329lre"
 
+dt = 0.1 
+
 struct Spike 
     time::Float64
     polarity::Bool
@@ -76,7 +78,7 @@ function update!(n::Neuron, spike_type::Int, dt::Float64; is_reverse=false)
     if spike_type != 0
         mult = is_reverse ? -1 : 1
         excitation = (spike_type * mult) > 0
-        force = excitation ? n.w : n.w/1.25
+        force = excitation ? n.w : n.w/1.5
         n.i_ext += (spike_type * mult) * force
     end
 
@@ -102,10 +104,8 @@ function update!(n::Neuron, spike_type::Int, dt::Float64; is_reverse=false)
     return false
 end
 
-dt = 0.1
-
-up_detector = Neuron(;τ_m=30.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=35.0, R_m=1.0)
-down_detector = Neuron(;τ_m=30.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=35.0, R_m=1.0)
+up_detector = Neuron(;τ_m=20.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=25.0, R_m=1.0)
+down_detector = Neuron(;τ_m=20.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=25.0, R_m=1.0)
 
 results_up = Float64[]
 results_down = Float64[]
@@ -130,8 +130,8 @@ plotly()
 
 # --- Visualization Parameters ---
 fs = 1000          # Sampling frequency
-duration = 4.0     # Seconds to display
-dt = 1.0           # Step size
+duration = 2.0     # Seconds to display
+          # Step size
 
 # Calculate middle seconds
 total_samples = length(filt_sig)
