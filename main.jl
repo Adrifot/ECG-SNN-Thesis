@@ -1,30 +1,27 @@
 using DSP
 
-PATIENT = "169"
-SESSION = "s0329lre"
+PATIENT = "001"
+SESSION = "s0010_re"
 
-dt = 0.1 
+dt = 1.0
 
 struct Spike 
     time::Float64
     polarity::Bool
 end
 
-function delta_modulation(signal; Δ=120)
+function delta_modulation(signal; Δ=100)
     n = length(signal)
     last_spike_lvl = signal[1]
     spiketrain = Spike[]
-
     for t in 2:n
-        diff = signal[t] - last_spike_lvl
-        if diff ≥ Δ
-            spike = Spike(t, true)
-            push!(spiketrain, spike)
-            last_spike_lvl = signal[t]
-        elseif diff ≤ -Δ
-            spike = Spike(t, false)
-            push!(spiketrain, spike)
-            last_spike_lvl = signal[t]
+        diff = signal[t] - last_spike_lvl 
+        if diff >= Δ
+            push!(spiketrain, Spike(t, true))
+            last_spike_lvl += Δ 
+        elseif diff <= -Δ
+            push!(spiketrain, Spike(t, false))
+            last_spike_lvl -= Δ
         end
     end
     return spiketrain
@@ -43,7 +40,7 @@ function load_raw_signal(patient, session)
 end
 
 
-function get_filtered_signal(signal; lowcut=0.5, highcut=40, fs=1000)
+function get_filtered_signal(signal; lowcut=0.01, highcut=40, fs=1000)
     pass = Bandpass(lowcut, highcut)
     method = Butterworth(4)
     return filtfilt(digitalfilter(pass, method; fs=fs), signal)
@@ -71,48 +68,66 @@ function Neuron(; τ_m=20.0, τ_ref=2.0, V_rest=-70.0,
 end
 
 function update!(n::Neuron, spike_type::Int, dt::Float64; is_reverse=false)
-    # Update synaptic current: dI/dt = -I/τ_s
+    # 1. Update synaptic current: dI/dt = -I/τ_s
     n.i_ext += (-n.i_ext / n.τ_s) * dt
 
-    # Inject new current when spike occurs
+    # 2. Inject new current (Scale this down or increase τ_s decay)
     if spike_type != 0
         mult = is_reverse ? -1 : 1
-        excitation = (spike_type * mult) > 0
-        force = excitation ? n.w : n.w/1.5
-        n.i_ext += (spike_type * mult) * force
+        # Only inject if the polarity matches the detector's intent
+        if (spike_type * mult) > 0
+            n.i_ext += n.w 
+        end
     end
 
-    # If in refractory period, voltage stuck at V_ref
+    # 3. Refractory handling
     if n.t_ref > 0
         n.v = n.V_reset
         n.t_ref -= dt
         return false
     end
 
-    # LIF Equation (leakage towards rest)
+    # 4. LIF Equation
     dv = (-(n.v - n.V_rest) + n.R_m * n.i_ext) / n.τ_m * dt
     n.v += dv
 
-    n.v = max(n.v, -10.0)
-
-    # Threshold check
+    # 5. Threshold check
     if n.v ≥ n.V_thresh
         n.v = n.V_reset
         n.t_ref = n.τ_ref
+        
+        n.i_ext = 0 
+        
         return true
     end
     return false
 end
 
-up_detector = Neuron(;τ_m=20.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=25.0, R_m=1.0)
-down_detector = Neuron(;τ_m=20.0, τ_ref=10.0, V_rest=0.0, V_thresh=7.5, V_reset=0.0, τ_s=20.0, w=25.0, R_m=1.0)
+up_detector = Neuron(;
+    τ_m=100.0,   
+    τ_ref=200.0,   
+    V_rest=0.0, 
+    V_thresh=40.0, 
+    V_reset=0.0, 
+    τ_s=30.0,      
+    w=15.0         
+)
+down_detector = Neuron(;
+    τ_m=100.0,      
+    τ_ref=200.0,   
+    V_rest=0.0, 
+    V_thresh=40.0, 
+    V_reset=0.0, 
+    τ_s=30.0,      
+    w=15.0          
+)
 
 results_up = Float64[]
 results_down = Float64[]
 
 raw_sig = load_raw_signal(PATIENT, SESSION)
 filt_sig = get_filtered_signal(raw_sig)
-spiketrain = delta_modulation(filt_sig; Δ=125)
+spiketrain = delta_modulation(filt_sig; Δ=100)
 
 N = length(filt_sig)
 
