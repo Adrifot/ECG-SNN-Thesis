@@ -53,7 +53,7 @@ end
 
 mutable struct Neuron
     name::String # Neuron identifier
-    τ_m::Float64 # Time constant
+    τ_m::Float64 # Membrane time constant
     τ_ref::Float64 # Refractory period
     V_rest::Float64 # Resting potential
     V_thresh::Float64 # Threshold potential
@@ -64,7 +64,7 @@ mutable struct Neuron
     i_ext::Float64 # Current current
     τ_s::Float64 # Synaptic decay constant
     w::Float64 # Synaptic weight
-    is_reverse::Bool # Whether to detect reverse polarity
+    is_reverse::Bool # If it's sensible to the reverse polarity
 end
 
 function Neuron(; name="neuron", τ_m=20.0, τ_ref=2.0, V_rest=-70.0, 
@@ -81,7 +81,7 @@ function update!(n::Neuron, spike_type::Int, dt::Float64)
     # 2. Inject new current (Scale this down or increase τ_s decay)
     if spike_type != 0
         mult = n.is_reverse ? -1 : 1
-        # Only inject if the polarity matches the detector's intent
+        # Only inject if the polarity matches the detector's
         if (spike_type * mult) > 0
             n.i_ext += n.w 
         end
