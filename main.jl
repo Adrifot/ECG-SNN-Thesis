@@ -10,6 +10,11 @@ struct Spike
     polarity::Bool
 end
 
+struct OutputSpike
+    time::Float64
+    neuron_name::String
+end
+
 function delta_modulation(signal; Δ=100)
     n = length(signal)
     last_spike_lvl = signal[1]
@@ -47,6 +52,7 @@ function get_filtered_signal(signal; lowcut=0.01, highcut=40, fs=1000)
 end
 
 mutable struct Neuron
+    name::String # Neuron identifier
     τ_m::Float64 # Time constant
     τ_ref::Float64 # Refractory period
     V_rest::Float64 # Resting potential
@@ -61,10 +67,10 @@ mutable struct Neuron
     is_reverse::Bool # Whether to detect reverse polarity
 end
 
-function Neuron(; τ_m=20.0, τ_ref=2.0, V_rest=-70.0, 
+function Neuron(; name="neuron", τ_m=20.0, τ_ref=2.0, V_rest=-70.0, 
                 V_thresh=-50.0, V_reset=-70.0, R_m=1.0, 
                 τ_s=5.0, w=15.0, is_reverse=false)
-    return Neuron(τ_m, τ_ref, V_rest, V_thresh, V_reset, 
+    return Neuron(name, τ_m, τ_ref, V_rest, V_thresh, V_reset, 
                 R_m, 0.0, 0.0, 0.0, τ_s, w, is_reverse)
 end
 
@@ -104,6 +110,7 @@ function update!(n::Neuron, spike_type::Int, dt::Float64)
 end
 
 QRS_up = Neuron(;
+    name="QRS_up",
     τ_m=100.0,   
     τ_ref=200.0,   
     V_rest=0.0, 
@@ -115,6 +122,7 @@ QRS_up = Neuron(;
 )
 
 QRS_down = Neuron(;
+    name="QRS_down",
     τ_m=100.0,      
     τ_ref=200.0,   
     V_rest=0.0, 
@@ -134,18 +142,23 @@ end
 
 function run(N, spiketrain, neurons, dt)
     results = [Float64[] for _ in neurons]
+    output_spikes = OutputSpike[]
     
     for t ∈ 1:N 
         s_at_t = filter(s -> s.time == t, spiketrain)
         pol = isempty(s_at_t) ? 0 : (s_at_t[1].polarity ? 1 : -1)
         
         for (i, neuron) in enumerate(neurons)
-            update!(neuron, pol, dt)
+            fired = update!(neuron, pol, dt)
             push!(results[i], neuron.v)
+            
+            if fired
+                push!(output_spikes, OutputSpike(t, neuron.name))
+            end
         end
     end
     
-    return results
+    return results, output_spikes
 end
 
 
@@ -158,8 +171,14 @@ spiketrain, N, filt_sig = get_spiketrain(PATIENT, SESSION; Δ=100)
 
 # Run simulation with multiple neurons
 neurons = [QRS_up, QRS_down]
-results = run(N, spiketrain, neurons, dt)
+results, output_spikes = run(N, spiketrain, neurons, dt)
 results_up, results_down = results[1], results[2]
+
+# println("Total output spikes: ", length(output_spikes))
+# println("First 10 output spikes:")
+# for spike in output_spikes[1:min(10, length(output_spikes))]
+#     println("  t=$(spike.time), neuron=$(spike.neuron_name)")
+# end
 
 # --- Visualization Parameters ---
 fs = 1000          # Sampling frequency
