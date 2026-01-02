@@ -14,7 +14,7 @@ struct Spike
 end
 
 
-function delta_modulation(signal; Δ=120)
+function delta_modulation(signal; Δ=100)
     n = length(signal)
     last_spike_lvl = signal[1]
     spiketrain = Spike[]
