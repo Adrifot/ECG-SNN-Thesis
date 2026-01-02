@@ -13,7 +13,7 @@ mutable struct Neuron
     t_ref::Float64 # Current remaining refractory time
 end
 
-function Neuron(; τ_m=10.0, τ_ref=2.0, V_rest=-75.0, V_thresh=-55.0, 
+function Neuron(; τ_m=10.0, τ_ref=10.0, V_rest=-75.0, V_thresh=-55.0, 
                 V_reset=-75.0, R_m=1.0)
     return Neuron(τ_m, τ_ref, V_rest, V_thresh, V_reset, R_m, V_rest, 0.0)
 end
