@@ -1,7 +1,7 @@
 using DSP
 
-PATIENT = "001"
-SESSION = "s0010_re"
+PATIENT = "104"
+SESSION = "s0306lre"
 
 dt = 1.0
 
@@ -58,22 +58,23 @@ mutable struct Neuron
     i_ext::Float64 # Current current
     τ_s::Float64 # Synaptic decay constant
     w::Float64 # Synaptic weight
+    is_reverse::Bool # Whether to detect reverse polarity
 end
 
 function Neuron(; τ_m=20.0, τ_ref=2.0, V_rest=-70.0, 
                 V_thresh=-50.0, V_reset=-70.0, R_m=1.0, 
-                τ_s=5.0, w=15.0)
+                τ_s=5.0, w=15.0, is_reverse=false)
     return Neuron(τ_m, τ_ref, V_rest, V_thresh, V_reset, 
-                R_m, V_rest, 0.0, 0.0, τ_s, w)
+                R_m, 0.0, 0.0, 0.0, τ_s, w, is_reverse)
 end
 
-function update!(n::Neuron, spike_type::Int, dt::Float64; is_reverse=false)
+function update!(n::Neuron, spike_type::Int, dt::Float64)
     # 1. Update synaptic current: dI/dt = -I/τ_s
     n.i_ext += (-n.i_ext / n.τ_s) * dt
 
     # 2. Inject new current (Scale this down or increase τ_s decay)
     if spike_type != 0
-        mult = is_reverse ? -1 : 1
+        mult = n.is_reverse ? -1 : 1
         # Only inject if the polarity matches the detector's intent
         if (spike_type * mult) > 0
             n.i_ext += n.w 
@@ -95,58 +96,74 @@ function update!(n::Neuron, spike_type::Int, dt::Float64; is_reverse=false)
     if n.v ≥ n.V_thresh
         n.v = n.V_reset
         n.t_ref = n.τ_ref
-        
         n.i_ext = 0 
-        
         return true
     end
+
     return false
 end
 
-up_detector = Neuron(;
+QRS_up = Neuron(;
     τ_m=100.0,   
     τ_ref=200.0,   
     V_rest=0.0, 
     V_thresh=40.0, 
     V_reset=0.0, 
     τ_s=30.0,      
-    w=15.0         
+    w=15.0,
+    is_reverse=false
 )
-down_detector = Neuron(;
+
+QRS_down = Neuron(;
     τ_m=100.0,      
     τ_ref=200.0,   
     V_rest=0.0, 
     V_thresh=40.0, 
     V_reset=0.0, 
     τ_s=30.0,      
-    w=15.0          
+    w=15.0,
+    is_reverse=true
 )
 
-results_up = Float64[]
-results_down = Float64[]
-
-raw_sig = load_raw_signal(PATIENT, SESSION)
-filt_sig = get_filtered_signal(raw_sig)
-spiketrain = delta_modulation(filt_sig; Δ=100)
-
-N = length(filt_sig)
-
-for t ∈ 1:N 
-    s_at_t = filter(s -> s.time == t, spiketrain)
-    pol = isempty(s_at_t) ? 0 : (s_at_t[1].polarity ? 1 : -1)
-    fired_up = update!(up_detector, pol, dt; is_reverse=false)
-    fired_down = update!(down_detector, pol, dt; is_reverse=true)
-    push!(results_up, up_detector.v)
-    push!(results_down, down_detector.v)
+function get_spiketrain(PATIENT, SESSION; Δ=100)
+    raw_sig = load_raw_signal(PATIENT, SESSION)
+    filt_sig = get_filtered_signal(raw_sig)
+    spiketrain = delta_modulation(filt_sig; Δ=Δ)
+    return spiketrain, length(filt_sig), filt_sig
 end
+
+function run(N, spiketrain, neurons, dt)
+    results = [Float64[] for _ in neurons]
+    
+    for t ∈ 1:N 
+        s_at_t = filter(s -> s.time == t, spiketrain)
+        pol = isempty(s_at_t) ? 0 : (s_at_t[1].polarity ? 1 : -1)
+        
+        for (i, neuron) in enumerate(neurons)
+            update!(neuron, pol, dt)
+            push!(results[i], neuron.v)
+        end
+    end
+    
+    return results
+end
+
+
 
 using Plots
 plotly()
 
+# Get spiketrain and signal length
+spiketrain, N, filt_sig = get_spiketrain(PATIENT, SESSION; Δ=100)
+
+# Run simulation with multiple neurons
+neurons = [QRS_up, QRS_down]
+results = run(N, spiketrain, neurons, dt)
+results_up, results_down = results[1], results[2]
+
 # --- Visualization Parameters ---
 fs = 1000          # Sampling frequency
 duration = 2.0     # Seconds to display
-          # Step size
 
 # Calculate middle seconds
 total_samples = length(filt_sig)
@@ -164,12 +181,12 @@ p1 = plot(time_axis, filt_sig[start_idx:end_idx],
 # --- Subplot 2: Up-Detector Neuron ---
 p2 = plot(time_axis, results_up[start_idx:end_idx], 
           linecolor=:green, ylabel="V_m (Up)", label="Up Neuron")
-hline!(p2, [up_detector.V_thresh], line=:dash, color=:red, label="Threshold")
+hline!(p2, [QRS_up.V_thresh], line=:dash, color=:red, label="Threshold")
 
 # --- Subplot 3: Down-Detector Neuron ---
 p3 = plot(time_axis, results_down[start_idx:end_idx], 
           linecolor=:red, ylabel="V_m (Down)", label="Down Neuron")
-hline!(p3, [down_detector.V_thresh], line=:dash, color=:red, label="Threshold")
+hline!(p3, [QRS_down.V_thresh], line=:dash, color=:red, label="Threshold")
 
 final_plot = plot(p1, p2, p3, layout=(3, 1), size=(900, 700), 
                   xlabel="Time (seconds)", link=:x)
