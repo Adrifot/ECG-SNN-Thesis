@@ -1,10 +1,10 @@
 """
-Neuron.jl
+Neurons.jl
 
 Definitions for `Spike`, `Neuron` and their functions.
 """
 
-module Neuron
+module Neurons
 
 export Neuron, update!, Spike, OutputSpike
 

@@ -9,6 +9,9 @@ module Signals
 
 export load_raw_signal, get_filtered_signal, get_spiketrain, delta_modulation
 
+include("Neurons.jl")
+using .Neurons
+
 using DSP   
 
 """
