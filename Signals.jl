@@ -12,6 +12,12 @@ export load_raw_signal, get_filtered_signal, get_spiketrain, delta_modulation
 using DSP   
 
 """
+    delta_modulation(
+        signal::AbstractVector{T}; 
+        Δ::Real=100
+    ) where {T <: Real} 
+    -> Vector{T}
+
 Perform delta-modulation on a real-valued signal.
 The function generates a spike-train by emitting:
     - an upward spike `Spike(t, true)` when the signal increases
@@ -47,6 +53,8 @@ function delta_modulation(
 end
 
 """
+    load_raw_signal(patient, session) -> Vector{Float64}
+
 Load raw ECG data for a given patient and session.
 
 The function expects files stored as:
@@ -82,6 +90,14 @@ end
 
 
 """
+    get_filtered_signal(
+        signal::AbstractVector{T}; 
+        lowcut::Real=0.01, 
+        highcut::Real=40, 
+        fs::Real=1000
+    ) where {T <: Real}
+    -> Vector{T}
+
 Apply a 4th-order Butterworth bandpass filter to a signal.
 
 # Arguments
@@ -106,7 +122,10 @@ end
 
 """
     get_spiketrain(patient, session; Δ=100)
-        -> (spiketrain, signal_length, filtered_signal)
+        -> (spiketrain::Vector{Spike}, 
+            signal_length::Integer, 
+            filtered_signal::AbstractVector{T})
+            where {T <: Real}
 
 Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrain.
 
@@ -117,9 +136,9 @@ Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrai
 
 # Returns
 A tuple containing:
-1. `spiketrain`: Encoded spike representation.
-2. `signal_length`: Length of the filtered signal.
-3. `filtered_signal`: Bandpass-filtered ECG signal.
+1. `spiketrain::Vector{Spike}`: Encoded spike representation.
+2. `signal_length::Integer`: Length of the filtered signal.
+3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
 """
 function get_spiketrain(patient, session; Δ=100)
     raw_sig = load_raw_signal(patient, session)
