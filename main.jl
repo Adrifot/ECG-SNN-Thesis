@@ -78,7 +78,7 @@ function update!(n::Neuron, spike_type::Int, dt::Float64)
     # 1. Update synaptic current: dI/dt = -I/τ_s
     n.i_ext += (-n.i_ext / n.τ_s) * dt
 
-    # 2. Inject new current (Scale this down or increase τ_s decay)
+    # 2. Inject new current 
     if spike_type != 0
         mult = n.is_reverse ? -1 : 1
         # Only inject if the polarity matches the detector's
@@ -144,7 +144,7 @@ function run(N, spiketrain, neurons, dt)
     results = [Float64[] for _ in neurons]
     output_spikes = OutputSpike[]
     
-    for t ∈ 1:N 
+    for t in 1:N 
         s_at_t = filter(s -> s.time == t, spiketrain)
         pol = isempty(s_at_t) ? 0 : (s_at_t[1].polarity ? 1 : -1)
         
