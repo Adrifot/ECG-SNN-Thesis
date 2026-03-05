@@ -36,21 +36,21 @@ QRS_down = Neuron(;
 function run(N, spiketrain, neurons, dt)
     results = [Float64[] for _ in neurons]
     output_spikes = OutputSpike[]
-    
+    spikemap = Dict{Int, Vector{typeof(spiketrain[1])}}()
+    for s in spiketrain
+        push!(get!(spikemap, s.time, []), s)
+    end
     for t in 1:N 
-        s_at_t = filter(s -> s.time == t, spiketrain)
-        pol = isempty(s_at_t) ? 0 : (s_at_t[1].polarity ? 1 : -1)
-        
+        s_at_t = get(spikemap, t, nothing)
+        pol = (s_at_t === nothing) ? 0 : (s_at_t[1].polarity ? 1 : -1)
         for (i, neuron) in enumerate(neurons)
             fired = update!(neuron, pol, dt)
             push!(results[i], neuron.v)
-            
             if fired
                 push!(output_spikes, OutputSpike(t, neuron.name))
             end
         end
     end
-    
     return results, output_spikes
 end
 
