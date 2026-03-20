@@ -57,7 +57,7 @@ function run(N, spiketrain, neurons, dt)
 end
 
 using Plots
-gr()   
+plotly()   
 
 function run_pipeline(PATIENT, SESSION, neurons; Δ=100, dt=1.0)
     spiketrain, N, filt_sig = get_spiketrain(PATIENT, SESSION; Δ=Δ)
@@ -113,6 +113,7 @@ function make_plot(data, QRS_up, QRS_down)
         link=:x)
 end
 
+neurons = [QRS_up, QRS_down]
 
 pipeline_data = run_pipeline(PATIENT, SESSION, neurons; Δ=100, dt=dt)
 
@@ -124,4 +125,4 @@ window = extract_window(
     duration=2.0
 )
 
-make_plot(window, QRS_up, QRS_down)
+make_plot(window, QRS_up, QRS_down) |> display
