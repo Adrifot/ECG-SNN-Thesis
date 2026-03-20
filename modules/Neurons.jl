@@ -9,7 +9,7 @@ module Neurons
 export Neuron, update!, Spike, OutputSpike
 
 """
-A spike emitted by a neuron at a given time with a polarity.
+A spike received by a neuron at a given time with a polarity.
 
 # Fields
 - `time`: The time (ms) at which the spike occurs.
