@@ -18,7 +18,7 @@ QRS_up = Neuron(;
     V_reset=0.0, 
     τ_s=30.0,      
     w=15.0,
-    is_reverse=false
+    isreverse=false
 )
 
 QRS_down = Neuron(;
@@ -30,7 +30,7 @@ QRS_down = Neuron(;
     V_reset=0.0, 
     τ_s=30.0,      
     w=15.0,
-    is_reverse=true
+    isreverse=true
 )
 
 function run(N, spiketrain, neurons, dt)

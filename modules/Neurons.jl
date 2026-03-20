@@ -48,7 +48,9 @@ A leaky integrate-and-fire (LIF) neuron with optional polarity sensitivity.
 - `i_ext::Float64`: Current synaptic input.
 - `τ_s::Float64`: Synaptic decay time constant (ms).
 - `w::Float64`: Synaptic weight.
-- `is_reverse::Bool`: Whether this neuron responds to reverse polarity spikes.
+- `isreverse::Bool`: Whether this neuron responds to reverse polarity spikes.
+- `t_lastin::Float64`: Timestamp of the last received input spike.
+- `t_lastout::Float64`: Timestamp of the last fired spike.
 """
 mutable struct Neuron
     name::String
@@ -63,7 +65,9 @@ mutable struct Neuron
     i_ext::Float64
     τ_s::Float64
     w::Float64
-    is_reverse::Bool
+    isreverse::Bool
+    t_lastin::Float64
+    t_lastout::Float64
 end
 
 """
@@ -79,16 +83,16 @@ Construct a new `Neuron` instance with default LIF parameters.
 - `R_m`: Membrane resistance.
 - `τ_s`: Synaptic decay constant.
 - `w`: Synaptic weight.
-- `is_reverse`: Sensitivity to reverse-polarity spikes.
+- `isreverse`: Sensitivity to reverse-polarity spikes.
 
 # Returns
 - A new `Neuron` instance.
 """
 function Neuron(; name="neuron", τ_m=20.0, τ_ref=2.0, V_rest=-70.0, 
                 V_thresh=-50.0, V_reset=-70.0, R_m=1.0, 
-                τ_s=5.0, w=15.0, is_reverse=false)
+                τ_s=5.0, w=15.0, isreverse=false)
     return Neuron(name, τ_m, τ_ref, V_rest, V_thresh, V_reset, 
-                  R_m, 0.0, 0.0, 0.0, τ_s, w, is_reverse)
+                  R_m, 0.0, 0.0, 0.0, τ_s, w, isreverse, 0.0, 0.0)
 end
 
 """
@@ -107,7 +111,7 @@ Advance the state of a neuron by one time step `dt` with optional synaptic input
 
 # Behavior
 1. Decays the synaptic current (`i_ext`) according to `τ_s`.
-2. Injects new synaptic current if `spike_type` polarity matches `is_reverse`.
+2. Injects new synaptic current if `spike_type` polarity matches `isreverse`.
 3. Handles refractory period: keeps membrane potential at `V_reset` if `t_ref > 0`.
 4. Updates membrane potential using the LIF differential equation.
 5. Checks threshold: if `v ≥ V_thresh`, neuron spikes, resets `v` to `V_reset`, sets refractory time, and clears `i_ext`.
@@ -116,7 +120,7 @@ function update!(n::Neuron, spike_type::Int, dt::Float64)
     n.i_ext += (-n.i_ext / n.τ_s) * dt
 
     if spike_type != 0
-        mult = n.is_reverse ? -1 : 1
+        mult = n.isreverse ? -1 : 1
         if (spike_type * mult) > 0
             n.i_ext += n.w 
         end
