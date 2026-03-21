@@ -5,7 +5,6 @@ Definitions for `Spike`, `Neuron` and their functions.
 """
 
 module Neurons
-
 export Neuron, update!, Spike, OutputSpike
 
 """
@@ -36,21 +35,21 @@ end
 A leaky integrate-and-fire (LIF) neuron with optional polarity sensitivity.
 
 # Fields
-- `name::String`: Identifier of the neuron.
-- `τ_m::Float64`: Membrane time constant (ms).
-- `τ_ref::Float64`: Refractory period (ms).
-- `V_rest::Float64`: Resting membrane potential (mV).
-- `V_thresh::Float64`: Spike threshold potential (mV).
-- `V_reset::Float64`: Reset potential after spike (mV).
-- `R_m::Float64`: Membrane resistance.
-- `v::Float64`: Current membrane potential (mV).
-- `t_ref::Float64`: Remaining refractory time (ms).
-- `i_ext::Float64`: Current synaptic input.
-- `τ_s::Float64`: Synaptic decay time constant (ms).
-- `w::Float64`: Synaptic weight.
-- `isreverse::Bool`: Whether this neuron responds to reverse polarity spikes.
-- `t_lastin::Float64`: Timestamp of the last received input spike.
-- `t_lastout::Float64`: Timestamp of the last fired spike.
+- `name`: Identifier of the neuron.
+- `τ_m`: Membrane time constant (ms).
+- `τ_ref`: Refractory period (ms).
+- `V_rest`: Resting membrane potential (mV).
+- `V_thresh`: Spike threshold potential (mV).
+- `V_reset`: Reset potential after spike (mV).
+- `R_m`: Membrane resistance.
+- `v`: Current membrane potential (mV).
+- `t_ref`: Remaining refractory time (ms).
+- `i_ext`: Current synaptic input.
+- `τ_s`: Synaptic decay time constant (ms).
+- `w`: Synaptic weight.
+- `isreverse`: Whether this neuron responds to reverse polarity spikes.
+- `t_lastin`: Timestamp of the last received input spike.
+- `t_lastout`: Timestamp of the last fired spike.
 """
 mutable struct Neuron
     name::String
