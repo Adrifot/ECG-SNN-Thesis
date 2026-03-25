@@ -35,24 +35,46 @@ QRS_down = Neuron(;
     isreverse=true
 )
 
-function run(N, spiketrain, neurons, dt)
-    results = [Float64[] for _ in neurons]
-    output_spikes = OutputSpike[]
-    spikemap = Dict{Int, Vector{typeof(spiketrain[1])}}()
-    for s in spiketrain
-        push!(get!(spikemap, s.time, []), s)
-    end
-    for t in 1:N 
-        s_at_t = get(spikemap, t, nothing)
-        pol = (s_at_t === nothing) ? 0 : (s_at_t[1].polarity ? 1 : -1)
-        for (i, neuron) in enumerate(neurons)
-            fired = update!(neuron, pol, dt)
-            push!(results[i], neuron.v)
+function run(T_end, spiketrain, neurons::Vector{T}, dt) where T <: Neuron
+    n_steps = Int(floor(T_end / dt))
+    n_neurons = length(neurons)
+    
+    # 1. Pre-allocate results matrix (Neurons are rows, Time is columns)
+    results = Matrix{Float64}(undef, n_neurons, n_steps)
+    
+    # 2. Pre-allocate output spike buffer
+    output_spikes = Vector{OutputSpike}()
+    sizehint!(output_spikes, 1000) 
+
+    # 3. Sort spikes by time 
+    spikes = sort(spiketrain, by = s -> s.time)
+    
+    spike_idx = 1
+    t = 0.0
+
+    # 4. Main Simulation Loop
+    for step in 1:n_steps
+        # Find if there's a spike in this time window
+        current_spike = nothing
+        if spike_idx <= length(spikes) && spikes[spike_idx].time <= t
+            current_spike = spikes[spike_idx]
+            spike_idx += 1
+        end
+
+        # 5. Inner Neuron Loop
+        for j in 1:n_neurons
+            neuron = neurons[j]
+            fired = update!(neuron, current_spike, dt)
+            results[j, step] = neuron.v
+
             if fired
                 push!(output_spikes, OutputSpike(t, neuron.name))
             end
         end
+        
+        t += dt
     end
+
     return results, output_spikes
 end
 
