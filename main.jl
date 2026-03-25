@@ -20,7 +20,7 @@ QRS_up = Neuron(;
     V_reset=0.0, 
     τ_s=30.0,      
     w=15.0,
-    is_reverse=false
+    isreverse=false
 )
 
 QRS_down = Neuron(;
@@ -32,7 +32,7 @@ QRS_down = Neuron(;
     V_reset=0.0, 
     τ_s=30.0,      
     w=15.0,
-    is_reverse=true
+    isreverse=true
 )
 
 function run(N, spiketrain, neurons, dt)
@@ -57,7 +57,7 @@ function run(N, spiketrain, neurons, dt)
 end
 
 using Plots
-gr()   
+plotly()   
 
 function run_pipeline(PATIENT, SESSION, neurons; Δ=100, dt=1.0)
     spiketrain, N, filt_sig = get_spiketrain(PATIENT, SESSION; Δ=Δ)
@@ -113,6 +113,7 @@ function make_plot(data, QRS_up, QRS_down)
         link=:x)
 end
 
+neurons = [QRS_up, QRS_down]
 
 pipeline_data = run_pipeline(PATIENT, SESSION, neurons; Δ=100, dt=dt)
 
@@ -124,4 +125,4 @@ window = extract_window(
     duration=2.0
 )
 
-make_plot(window, QRS_up, QRS_down)
+make_plot(window, QRS_up, QRS_down) |> display
