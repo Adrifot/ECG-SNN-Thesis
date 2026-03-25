@@ -11,7 +11,7 @@ Simulation primitives for LIF neurons and spike representations.
 module Neurons
 # NOTE: Will be updated after `Synapses.jl` gets finished.
 
-export Neuron, update!, Spike
+export Neuron, update!, Spike, receive_spike!
 
 """
     Spike(time, polarity, src_name)
@@ -102,18 +102,30 @@ mutable struct Neuron
         V_thresh > V_rest || throw(ArgumentError("V_thresh must be greater than V_rest"))
         τ_ref >= 0 || throw(ArgumentError("τ_ref cannot be negative (got $τ_ref)"))
         
-        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, isreverse, 0.0, V_rest, 0.0, 0.0)
+        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, isreverse, 0.0, V_rest, 0.0, 0.0, 0.0)
     end
 end
 
 """
-    update!(n, spike, dt, t) -> Bool
+    receive_spike!(n, weight)
+
+Inject current into the neuron. This is where the Synapse's weight is applied.
+
+# Arguments:
+- `n::Neuron`: Neuron receiving the spike.
+- `weight::Float64`: Applied synaptic weight.
+"""
+receive_spike!(n::Neuron, weight::Float64) = n.i += weight
+
+
+"""
+    update!(n, dt, t) -> Bool
 
 Advance the state of a `Neuron` by one time step using the LIF model.
+The `spike` argument is removed here because input is now handled via `receive_spike!`.
 
 # Arguments
 - `n::Neuron`: The neuron to update.
-- `spike::Spike`: Incoming spike at current time step, or `nothing` if no spike received.
 - `dt::Float64`: Time step used.
 - `t::Float64`: Current simulation time.
 
@@ -121,52 +133,37 @@ Advance the state of a `Neuron` by one time step using the LIF model.
 - `Bool`: `true` if the neuron fires a spike at time `t`, `false` otherwise.
 
 # Behavior
-1. **Synaptic decay**: `n.i` decays exponentially with time constant `n.τ_s`.
+1. **Synaptic current decay**: `n.i` decays exponentially with time constant `n.τ_s`.
 
-2. **Spike input**: If a spike is received, its polarity and the neuron's sensitivity 
-    determine if `n.i` will increase. Last received spike time is saved.
+2. **Refractory handling**: If the neuron is in its refractory period (`n.t_ref > 0`),
+    membrane potential `n.v` is clamped to `V_reset` and no spikes can be generated.
 
-3. **Refractory handling**: If the neuron is in its refractory period (`n.t_ref > 0`),
-    membrane potential `n.v` is clamped to `V_reset` and no spikes can be generated. 
+3. **Membrane update**: Membrane potential `n.v` is updated using LIF dynamics.
 
-4. **Membrane update**: Membrane potential `n.v` is updated using LIF dynamics.
-
-5. **Spike generation**: If membrane potential `n.v` reaches or exceeds threshold `n.V_thresh`,
+4. **Spike generation**: If membrane potential `n.v` reaches or exceeds threshold `n.V_thresh`,
     the neuron emits a spike, potential and current are reset, time variables are updated accordingly.
 """
-function update!(n::Neuron, spike::Union{Nothing, Spike}, dt::Float64, t::Float64)
+function update!(n::Neuron, dt::Float64, t::Float64)
 
-    # 1. Synaptic decay
-    n.i += (-n.i / n.τ_s) * dt
+    # 1. Synaptic current decay
+    # i(t) = i(0) * exp(-dt/τ_s)
+    n.i *= exp(-dt / n.τ_s)
 
-    # 2. Spike input
-    if spike !== nothing
-        mult = n.isreverse ? -1 : 1
-        polarity = spike.polarity ? 1 : -1
-
-        if (polarity * mult) > 0
-            n.i += 1.0 # HACK: will have to link to synaptic weight
-        end
-
-        n.t_lastin = spike.time
-    end
-
-    # 3. Refractory handling
+    # 2. Refractory handling
     if n.t_ref > 0
         n.v = n.V_reset
         n.t_ref -= dt
         return false
     end
 
-    # 4. LIF logic
+    # 3. LIF logic 
     dv = (-(n.v - n.V_rest) + n.R_m * n.i) / n.τ_m * dt
     n.v += dv
 
-    # 5. Spike generation
+    # 4. Spike generation
     if n.v ≥ n.V_thresh
         n.v = n.V_reset
         n.t_ref = n.τ_ref
-        n.i = 0
         n.t_lastout = t 
 
         return true
@@ -176,3 +173,4 @@ function update!(n::Neuron, spike::Union{Nothing, Spike}, dt::Float64, t::Float6
 end
 
 end # module Neurons
+
