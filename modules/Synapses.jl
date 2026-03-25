@@ -35,7 +35,7 @@ mutable struct Synapse
     τ_post::Float64
     learningrate::Float64
     isinhibitory::Bool
-
+    # TODO: Add inner constructor docstirng
     function Synapse(
         inidx::Int, 
         outidx::Int; 

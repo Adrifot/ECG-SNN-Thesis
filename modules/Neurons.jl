@@ -7,9 +7,9 @@ Simulation primitives for LIF neurons and spike representations.
 - `Spike`: Input/output events received or emitted by the system.
 - `Neuron`: The core LIF model with synaptic dynamics.
 - `update!`: The state integration function.
+- `receive_spike!`: Spike receiving function.
 """
 module Neurons
-# NOTE: Will be updated after `Synapses.jl` gets finished.
 
 export Neuron, update!, Spike, receive_spike!
 
