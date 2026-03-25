@@ -1,5 +1,5 @@
 """
-    Neurons
+    Neurons.jl
 
 Simulation primitives for LIF neurons and spike representations.
 
@@ -9,6 +9,7 @@ Simulation primitives for LIF neurons and spike representations.
 - `update!`: The state integration function.
 """
 module Neurons
+# NOTE: Will be updated after `Synapses.jl` gets finished.
 
 export Neuron, update!, Spike
 
