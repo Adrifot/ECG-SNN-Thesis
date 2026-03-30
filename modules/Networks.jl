@@ -5,7 +5,7 @@ Module description. # TODO: Add module docstring.
 """
 module Networks
 
-export Network, resolve_index
+export Network, resolve_index, addneuron!, addsynapse!
 
 include("Neurons.jl")
 include("Synapses.jl")
@@ -13,15 +13,27 @@ include("Synapses.jl")
 using .Neurons
 using .Synapses
 
-# TODO: Add docstrings for Network
-#   [] Struct docstring
-#   [] Constructor docstring
+"""
+    Network
+A collection of interconnected neurons and synapses. 
+
+# Fields
+- `neurons::Vector{Neuron}`: the `Neuron` instances that form the network.
+- `synapses::Vector{Synapses}`: the `Synapse` instances connecting the neurons.
+- `index::Dict{String, Int}`: A dictionary mapping neuron names to their id number.
+- `spikelog::Vector{Spike}`: A vector of spikes outputted by the network.
+"""
 mutable struct Network
     neurons::Vector{Neuron}
     synapses::Vector{Synapse}
     index::Dict{String, Int}
     spikelog::Vector{Spike}
 
+    @doc"""
+        Network(neurons, synapses) -> Network
+    
+    Create a new `Network` instance. Inner constructor for the `Network` struct.
+    """
     function Network(
         ns::Vector{Neuron}, 
         syns::Vector{Synapse}
@@ -57,12 +69,11 @@ function resolve_index(net::Network, id::Int)
     return id
 end
 
-# TODO: Add docstrings for network expanders
-#   [] Neuron
-#   [] Synapse - 1st method
-#   [] Synapse - 2nd method
 """
-docstring
+    addneuron!(network, neuron) -> Network
+
+Add a `Neuron` to a `Network`.
+Duplicate neuron names not accepted.
 """
 function addneuron!(net::Network, n::Neuron)
     !haskey(net.index, n.name) || throw(ArgumentError("Duplicate neuron name: $(n.name)."))
@@ -72,7 +83,10 @@ function addneuron!(net::Network, n::Neuron)
 end
 
 """
-docstring
+    addsynapse!(network, synapse) -> Network
+    addsynapse!(network, source_neuron_id, target_neuron_id) -> Network
+
+Add a `Synapse` to a `Network`.
 """
 function addsynapse!(net::Network, src_id::Int, target_id::Int)
     1 ≤ src_id ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
