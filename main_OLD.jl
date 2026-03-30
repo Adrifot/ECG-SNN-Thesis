@@ -1,3 +1,5 @@
+# !!! FILE DEPRECATED !!!
+
 include("modules/Neurons.jl")
 include("modules/Signals.jl")
 
