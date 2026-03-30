@@ -91,8 +91,7 @@ Add a `Synapse` to a `Network`.
 function addsynapse!(net::Network, src_id::Int, target_id::Int)
     1 ≤ src_id ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
     1 ≤ target_id ≤ length(net.neurons) || throw(ArgumentError("Target neuron id out of bounds."))
-    synapse = Synapse(src_id, target_id)
-    push!(net.synapses, synapse)
+    push!(net.synapses, Synapse(src_id, target_id))
     return net
 end
 
