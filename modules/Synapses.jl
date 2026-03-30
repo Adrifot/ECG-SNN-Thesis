@@ -35,7 +35,23 @@ mutable struct Synapse
     τ_post::Float64
     learningrate::Float64
     isinhibitory::Bool
-    # TODO: Add inner constructor docstirng
+  
+    @doc"""
+        Synapse(inidx, outidx; kwargs...) -> Synapse
+    Create a new `Synapse` instance. Inner constructor for the `Synapse` struct.
+
+    # Arguments
+    - `inidx::Int`: Index of the input neuron.
+    - `outidx::Int`: Index of the output neuron.
+
+    # Keyword Arguments
+    - `w::Float64=0.5`: Current synaptic weight.
+    - `wmax::Float64=1.0`: Maximum synaptic weight.
+    - `τ_pre::Float64=20.0`: Prespike interval.
+    - `τ_post::Float64=20.0`: Postspike interval.
+    - `learningrate::Float64=0.01`: STDP learning weight.
+    - `isinhibitory::Bool=false`: Whether this synapse is inhibitory.
+    """
     function Synapse(
         inidx::Int, 
         outidx::Int; 
