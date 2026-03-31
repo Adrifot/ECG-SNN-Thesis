@@ -115,6 +115,43 @@ function addsynapse!(net::Network, syn::Synapse)
     return net
 end
 
+"""
+    Connectome
+A representation of an SNN network optimized for fast synaptic access via adjacency lists.
+
+# Fields
+- `neurons::Vector{Neuron}`: the `Neuron` instances that form the network.
+- `outgoing::Vector{Vector{Synapse}}`: outgoing[i] is a vector of synapses from neuron i.
+- `incoming::Vector{Vector{Synapse}}`: incoming[i] is a vector of synapses to neuron i.
+- `spikelog::Vector{Spike}`: A vector of spikes outputted by the network.
+"""
+struct Connectome
+    neurons::Vector{Neuron}
+    outgoing::Vector{Vector{Synapse}}
+    incoming::Vector{Vector{Synapse}}
+    spikelog::Vector{Spike}
+
+    @doc"""
+        Connectome(neurons, synapses) -> Connectome
+        Connectome(network) -> Connectome
+
+    Create a new `Connectome` instance from neurons and synapses.
+    Inner constructor for the `Connectome` struct.
+    """
+    function Connectome(
+        ns::Vector{Neuron}, 
+        syns::Vector{Synapse}
+    )
+        n_neurons = length(ns)
+        outgoing = [Synapse[] for _ in 1:n_neurons]
+        incoming = [Synapse[] for _ in 1:n_neurons]
+        for syn in syns
+            push!(outgoing[syn.inidx], syn)
+            push!(incoming[syn.outidx], syn)
+        end
+        return new(ns, outgoing, incoming, Spike[])
+    end
+end
 
 """
     step!(network, dt, t)
@@ -123,16 +160,11 @@ end
 Advance the state of the network by one time step. This function updates all neurons,
 decays synapses, propagates spikes through the network, and logs any spikes that occurred.
 
-# Arguments
-- `net::Network`: The network to update.
-- `dt::Float64`: Time step used.
-- `t::Float64`: Current simulation time.
-
 # Behavior
 1. Update each neuron and record which ones fired in a temporary array.
 2. Decay all synapses exponentially:
-    - is used on a `Network`, will apply **Global decay**.
-    - if used on a `Connectome`, will apply **Lazy decay** but will work faster.
+    - If used on a `Network`, will apply **Global decay**.
+    - If used on a `Connectome`, will apply **Lazy decay** but will work faster.
 3. For each synapse where the pre-synaptic neuron fired:
     - Apply prespike update (LTD: decrease weight based on post-synaptic trace)
     - Inject synaptic current into the post-synaptic neuron
@@ -208,11 +240,9 @@ end
 Run the network for the given duration using time step `dt`.
 
 # Arguments
-- `net::Network`: the network to simulate.
+- `net::Network` / `c::Connectome`: the network/connectome to simulate.
 - `dt::Float64`: simulation time step.
 - `duration::Float64`: total duration to run.
-
-# Keyword Arguments
 - `t0::Float64=0.0`: optional start time for the simulation.
 
 # Returns
@@ -243,7 +273,7 @@ end
     """
     get_outgoing_syns(network, neuron_index) -> Vector{Synapse}
 
-Return all synapses that originate from the neuron with integer index `idx`.
+Return all synapses that originate from the neuron with index `idx`.
     """
 get_outgoing_syns(net::Network, idx::Int) = filter(s -> s.inidx == idx, net.synapses)
 
@@ -251,52 +281,10 @@ get_outgoing_syns(net::Network, idx::Int) = filter(s -> s.inidx == idx, net.syna
     """
     get_incoming_syns(network, neuron_index) -> Vector{Synapse}
 
-Return all synapses that target the neuron with integer index `idx`.
+Return all synapses that target the neuron with index `idx`.
     """
 get_incoming_syns(net::Network, idx::Int) = filter(s -> s.outidx == idx, net.synapses)
 
-
-"""
-    Connectome
-A representation of an SNN network optimized for fast synaptic access via adjacency lists.
-
-# Fields
-- `neurons::Vector{Neuron}`: the `Neuron` instances that form the network.
-- `outgoing::Vector{Vector{Synapse}}`: outgoing[i] is a vector of synapses from neuron i.
-- `incoming::Vector{Vector{Synapse}}`: incoming[i] is a vector of synapses to neuron i.
-- `spikelog::Vector{Spike}`: A vector of spikes outputted by the network.
-"""
-struct Connectome
-    neurons::Vector{Neuron}
-    outgoing::Vector{Vector{Synapse}}
-    incoming::Vector{Vector{Synapse}}
-    spikelog::Vector{Spike}
-
-    @doc"""
-        Connectome(neurons, synapses) -> Connectome
-        Connectome(network) -> Connectome
-
-    Create a new `Connectome` instance from neurons and synapses.
-    Inner constructor for the `Connectome` struct.
-
-    # Arguments
-    - `neurons::Vector{Neuron}`: Vector of Neuron instances
-    - `synapses::Vector{Synapse}`: Vector of Synapse instances
-    """
-    function Connectome(
-        ns::Vector{Neuron}, 
-        syns::Vector{Synapse}
-    )
-        n_neurons = length(ns)
-        outgoing = [Synapse[] for _ in 1:n_neurons]
-        incoming = [Synapse[] for _ in 1:n_neurons]
-        for syn in syns
-            push!(outgoing[syn.inidx], syn)
-            push!(incoming[syn.outidx], syn)
-        end
-        return new(ns, outgoing, incoming, Spike[])
-    end
-end
 
 function Network(c::Connectome)
     all_synapses = reduce(vcat, c.outgoing) 
