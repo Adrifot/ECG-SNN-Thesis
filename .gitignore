@@ -2,3 +2,4 @@ ecg-db/
 .*
 !.gitignore
 TODO.md
+examples/

@@ -86,7 +86,8 @@ end
     addsynapse!(network, synapse) -> Network
     addsynapse!(network, source_neuron_id, target_neuron_id) -> Network
 
-Add a `Synapse` to a `Network`.
+Add a `Synapse` to a `Network`. If source and target neuron ids are provided,
+a `Synapse` with default parameters will be constructed.
 """
 function addsynapse!(net::Network, src_id::Int, target_id::Int)
     1 ≤ src_id ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
@@ -99,6 +100,60 @@ function addsynapse!(net::Network, syn::Synapse)
     1 ≤ syn.inidx ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
     1 ≤ syn.outidx ≤ length(net.neurons) || throw(ArgumentError("Target neuron id out of bounds."))
     push!(net.synapses, syn)
+end
+
+
+"""
+    step!(network, dt, t)
+    
+Advance the state of the network by one time step. This function updates all neurons,
+decays synapses, propagates spikes through the network, and logs any spikes that occurred.
+
+# Arguments
+- `net::Network`: The network to update.
+- `dt::Float64`: Time step used.
+- `t::Float64`: Current simulation time.
+
+# Behavior
+1. Update each neuron and record which ones fired in a temporary array.
+2. Decay all synapses exponentially.
+3. For each synapse where the pre-synaptic neuron fired:
+    - Apply prespike update (LTD: decrease weight based on post-synaptic trace)
+    - Inject synaptic current into the post-synaptic neuron
+4. For each synapse where the post-synaptic neuron fired:
+    - Apply postspike update (LTP: increase weight based on pre-synaptic trace)
+5. Append all spikes from neurons that fired during this time step to the network's spike log.
+"""
+function step!(net::Network, dt::Float64, t::Float64)
+    fired = falses(length(net.neurons))
+    
+    # 1. Update each neuron and store which ones fired
+    for i in eachindex(net.neurons)
+        fired[i] = update!(net.neurons[i], dt, t)
+    end
+
+    # 2. Decay all synapses
+    for syn in net.synapses
+        decay!(syn, dt)
+    end
+
+    # 3. Popagate current from pre-synaptic neurons
+    neurons = net.neurons # local copy for faster access
+    for syn in net.synapses
+        if fired[syn.inidx]
+            prespike!(syn)
+            receive_spike!(neurons[syn.outidx], syn.isinhibitory ? -syn.w : syn.w)
+        end
+        if fired[syn.outidx]
+            postspike!(syn)
+        end
+    end
+
+    # 4. Log spikes
+    for i in findall(identity, fired) # retreive only indeces with true values
+        push!(net.spikelog, Spike(t, true, net.neurons[i].name))
+    end
+
 end
 
 end # module Network
