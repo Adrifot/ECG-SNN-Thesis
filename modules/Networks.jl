@@ -156,4 +156,31 @@ function step!(net::Network, dt::Float64, t::Float64)
 
 end
 
+"""
+    run!(net, dt, duration; t0=0.0) -> Vector{Spike}
+
+Run the network for the given duration using time step `dt`.
+
+# Arguments
+- `net::Network`: the network to simulate.
+- `dt::Float64`: simulation time step.
+- `duration::Float64`: total duration to run.
+
+# Keyword Arguments
+- `t0::Float64=0.0`: optional start time for the simulation.
+
+# Returns
+- `Vector{Spike}`: the network's `spikelog` after the run.
+"""
+function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0)
+    nsteps = Int(round(duration / dt))
+    empty!(net.spikelog)
+    for step in 1:nsteps
+        t = t0 + (step - 1) * dt
+        step!(net, dt, t)
+    end
+
+    return net.spikelog
+end
+
 end # module Network
