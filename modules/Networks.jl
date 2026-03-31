@@ -2,11 +2,12 @@
     Networks.jl
 
 Utilities for building and simulating LIF Spiking Neural Networks 
-connected by plastic synapses with STDP capabilities.
+connected by synapses with STDP capabilities.
 """
 module Networks
 
-export Network, resolve_index, addneuron!, addsynapse!
+export Network, resolve_index, addneuron!, addsynapse!, step!, run!,
+    get_incoming_syns, get_outgoing_syns
 
 include("Neurons.jl")
 include("Synapses.jl")
