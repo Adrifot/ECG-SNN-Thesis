@@ -1,7 +1,8 @@
 """
-    Network.jl
+    Networks.jl
 
-Module description. # TODO: Add module docstring.
+Utilities for building and simulating LIF Spiking Neural Networks 
+connected by plastic synapses with STDP capabilities.
 """
 module Networks
 
@@ -188,5 +189,35 @@ function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0)
 
     return net.spikelog
 end
+
+    """
+    get_outgoing_syns(net, idx) -> Vector{Synapse}
+
+Return all synapses that originate from the neuron with integer index `idx`.
+
+# Arguments
+- `net::Network`: The network to query.
+- `idx::Int`: Index of the source neuron.
+
+# Returns
+- `Vector{Synapse}`: A vector containing synapses whose `inidx` equals `idx`.
+    """
+get_outgoing_syns(net::Network, idx::Int) = filter(s -> s.inidx == idx, net.synapses)
+ 
+
+    """
+    get_incoming_syns(net, idx) -> Vector{Synapse}
+
+Return all synapses that target the neuron with integer index `idx`.
+
+# Arguments
+- `net::Network`: The network to query.
+- `idx::Int`: Index of the target neuron.
+
+# Returns
+- `Vector{Synapse}`: Synapses whose `outidx` equals `idx`.
+    """
+get_incoming_syns(net::Network, idx::Int) = filter(s -> s.outidx == idx, net.synapses)
+ 
 
 end # module Network
