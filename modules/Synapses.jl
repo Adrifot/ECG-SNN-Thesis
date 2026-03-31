@@ -43,8 +43,6 @@ mutable struct Synapse
     # Arguments
     - `inidx::Int`: Index of the input neuron.
     - `outidx::Int`: Index of the output neuron.
-
-    # Keyword Arguments
     - `w::Float64=0.5`: Current synaptic weight.
     - `wmax::Float64=1.0`: Maximum synaptic weight.
     - `τ_pre::Float64=20.0`: Prespike interval.

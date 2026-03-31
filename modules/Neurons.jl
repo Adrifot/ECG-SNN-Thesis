@@ -75,8 +75,6 @@ mutable struct Neuron
 
     # Arguments
     - `name::String`: Neuron's identifier
-
-    # Keyword Arguments
     - `V_rest::Float64=0.0`: Resting membrane potential.
     - `V_thresh::Float64=1.0`: Spike threshold potential.
     - `V_reset::Float64=0.0`: Reset potential.

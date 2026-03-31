@@ -74,6 +74,9 @@ end
 
 Add a `Neuron` to a `Network`.
 Duplicate neuron names not accepted.
+
+# Returns
+- `Network`: the updated network.
 """
 function addneuron!(net::Network, n::Neuron)
     !haskey(net.index, n.name) || throw(ArgumentError("Duplicate neuron name: $(n.name)."))
@@ -88,6 +91,9 @@ end
 
 Add a `Synapse` to a `Network`. If source and target neuron ids are provided,
 a `Synapse` with default parameters will be constructed.
+
+# Returns
+- `Network`: the updated network.
 """
 function addsynapse!(net::Network, src_id::Int, target_id::Int)
     1 ≤ src_id ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
