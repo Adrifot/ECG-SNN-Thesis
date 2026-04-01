@@ -23,6 +23,7 @@ A directed connection between 2 `Neuron` instances with STDP.
 - `τ_post::Float64`: Time constant for post-synaptic trace.
 - `learningrate::Float64`: Synaptic learning rate.
 - `isinhibitory::Bool`: Whether the synapse is inhibitory.
+- `delay::Float64`: Synaptic transmission delay in time units.
 """
 mutable struct Synapse
     inidx::Int
@@ -35,6 +36,7 @@ mutable struct Synapse
     τ_post::Float64
     learningrate::Float64
     isinhibitory::Bool
+    delay::Float64
   
     @doc"""
         Synapse(inidx, outidx; kwargs...) -> Synapse
@@ -49,6 +51,7 @@ mutable struct Synapse
     - `τ_post::Float64=20.0`: Postspike interval.
     - `learningrate::Float64=0.01`: STDP learning weight.
     - `isinhibitory::Bool=false`: Whether this synapse is inhibitory.
+    - `delay::Float64=0.0`: Synaptic transmission delay.
     """
     function Synapse(
         inidx::Int, 
@@ -58,21 +61,18 @@ mutable struct Synapse
         τ_pre::Float64 = 20.0, 
         τ_post::Float64 = 20.0, 
         learningrate::Float64 = 0.01, 
-        isinhibitory::Bool = false
+        isinhibitory::Bool = false,
+        delay::Float64 = 0.0
     )
-        new(inidx, outidx, w, wmax, 0.0, 0.0, τ_pre, τ_post, learningrate, isinhibitory)
+        new(inidx, outidx, w, wmax, 0.0, 0.0, τ_pre, τ_post, learningrate, isinhibitory, delay)
     end
 end
 
 
 """
-    decay!(syn, dt)
+    decay!(synapse, dt)
 
 Exponentially decay the pre- and post-synaptic traces.
-
-# Arguments:
-- `syn::Synapse`: The synapse to be decayed.
-- `dt::Float64`: Time step used.
 """
 function decay!(syn::Synapse, dt::Float64)
     syn.pretrace *= exp(-dt / syn.τ_pre)
