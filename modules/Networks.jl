@@ -35,6 +35,7 @@ mutable struct Network
     @doc"""
         Network(neurons, synapses) -> Network
         Network(connectome) -> Network
+        Network() -> Network
     
     Create a new `Network` instance. 
     Inner constructor for the `Network` struct.
@@ -52,6 +53,8 @@ mutable struct Network
     end
 
 end
+
+Network() = Network(Neuron[], Synapse[])
 
 """
     resolve_index(network, id) -> Int
@@ -93,7 +96,8 @@ end
 
 """
     addsynapse!(network, synapse) -> Network
-    addsynapse!(network, source_neuron_id, target_neuron_id) -> Network
+    addsynapse!(network, source_neuron_id, target_neuron_id; kwargs...) -> Network
+    addsynapse!(network, source_neuron_name, target_neuron_name; kwargs) -> Network
 
 Add a `Synapse` to a `Network`. If source and target neuron ids are provided,
 a `Synapse` with default parameters will be constructed.
@@ -101,16 +105,24 @@ a `Synapse` with default parameters will be constructed.
 # Returns
 - `Network`: the updated network.
 """
-function addsynapse!(net::Network, src_id::Int, target_id::Int)
+function addsynapse!(net::Network, src_id::Int, target_id::Int; kwargs...)
     1 ≤ src_id ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
     1 ≤ target_id ≤ length(net.neurons) || throw(ArgumentError("Target neuron id out of bounds."))
-    push!(net.synapses, Synapse(src_id, target_id))
+    push!(net.synapses, Synapse(src_id, target_id; kwargs...))
     return net
 end
 
 function addsynapse!(net::Network, syn::Synapse)  
     1 ≤ syn.inidx ≤ length(net.neurons) || throw(ArgumentError("Source neuron id out of bounds."))
     1 ≤ syn.outidx ≤ length(net.neurons) || throw(ArgumentError("Target neuron id out of bounds."))
+    push!(net.synapses, syn)
+    return net
+end
+
+function addsynapse!(net::Network, pre_name::String, post_name::String; kwargs...)
+    pre_idx = resolve_index(net, pre_name)
+    post_idx = resolve_index(net, post_name)
+    syn = Synapse(pre_idx, post_idx; kwargs...)
     push!(net.synapses, syn)
     return net
 end
@@ -168,8 +180,7 @@ decays synapses, propagates spikes through the network, and logs any spikes that
 3. For each synapse where the pre-synaptic neuron fired:
     - Apply prespike update (LTD: decrease weight based on post-synaptic trace)
     - Inject synaptic current into the post-synaptic neuron
-4. For each synapse where the post-synaptic neuron fired:
-    - Apply postspike update (LTP: increase weight based on pre-synaptic trace)
+4. For each synapse where the post-synaptic neuron fired, apply postspike update (LTP: increase weight based on pre-synaptic trace)
 5. Append all spikes from neurons that fired during this time step to the network's spike log.
 """
 function step!(net::Network, dt::Float64, t::Float64)
