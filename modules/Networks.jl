@@ -96,8 +96,8 @@ end
 
 """
     addsynapse!(network, synapse) -> Network
-    addsynapse!(network, source_neuron_id, target_neuron_id; kwargs...) -> Network
-    addsynapse!(network, source_neuron_name, target_neuron_name; kwargs) -> Network
+    addsynapse!(network, source_neuron_id, target_neuron_id; synapse_kwargs...) -> Network
+    addsynapse!(network, source_neuron_name, target_neuron_name; synapse_kwargs) -> Network
 
 Add a `Synapse` to a `Network`. If source and target neuron ids are provided,
 a `Synapse` with default parameters will be constructed.
