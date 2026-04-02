@@ -244,6 +244,8 @@ function step!(c::Connectome, dt::Float64, t::Float64)
 end
 
 """
+ # TODO: Add missing parameters in docstring
+ # HACK: For now only works for function input, npt spikes
     run!(network, dt, duration; t0=0.0) -> Vector{Spike}
     run!(connectome, dt, duration; t0=0.0) -> Vector{Spike}
 
@@ -259,11 +261,17 @@ Run the network for the given duration using time step `dt`.
 # Returns
 - `Vector{Spike}`: the network's `spikelog` after the run.
 """
-function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0, callback=nothing)
+function run!(net::Network, input, input_target::Vector{Int}, dt::Float64, duration::Float64; 
+                t0::Float64=0.0, callback=nothing
+            )
     nsteps = Int(round(duration / dt))
     empty!(net.spikelog)
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
+        for n in input_target
+            receive_spike!(net.neurons[n], input(t)) 
+        end
+        
         step!(net, dt, t)
         if callback !== nothing
             callback(t, net, step)
@@ -273,11 +281,17 @@ function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0, cal
     return net.spikelog
 end
 
-function run!(c::Connectome, dt::Float64, duration::Float64; t0::Float64=0.0, callback=nothing)
+#
+function run!(c::Connectome, input, input_target::Vector{Int}, dt::Float64, duration::Float64; 
+                t0::Float64=0.0, callback=nothing
+            )
     nsteps = Int(round(duration / dt))
     empty!(c.spikelog)
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
+        for n in input_target
+            receive_spike!(net.neurons[n], input(t))
+        end
         step!(c, dt, t)
         if callback !== nothing
             callback(t, net, step)
