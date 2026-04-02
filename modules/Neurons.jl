@@ -120,7 +120,6 @@ receive_spike!(n::Neuron, weight::Float64) = n.i += weight
     update!(n, dt, t) -> Bool
 
 Advance the state of a `Neuron` by one time step using the LIF model.
-The `spike` argument is removed here because input is now handled via `receive_spike!`.
 
 # Arguments
 - `n::Neuron`: The neuron to update.
