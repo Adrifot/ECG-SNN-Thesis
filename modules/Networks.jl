@@ -51,7 +51,6 @@ mutable struct Network
         end
         return new(ns, syns, index, Spike[])
     end
-
 end
 
 Network() = Network(Neuron[], Synapse[])
@@ -255,27 +254,34 @@ Run the network for the given duration using time step `dt`.
 - `dt::Float64`: simulation time step.
 - `duration::Float64`: total duration to run.
 - `t0::Float64=0.0`: optional start time for the simulation.
+- `callback::(t, net, step) -> Nothing`: Optional function called after each step.
 
 # Returns
 - `Vector{Spike}`: the network's `spikelog` after the run.
 """
-function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0)
+function run!(net::Network, dt::Float64, duration::Float64; t0::Float64=0.0, callback=nothing)
     nsteps = Int(round(duration / dt))
     empty!(net.spikelog)
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
         step!(net, dt, t)
+        if callback !== nothing
+            callback(t, net, step)
+        end
     end
 
     return net.spikelog
 end
 
-function run!(c::Connectome, dt::Float64, duration::Float64; t0::Float64=0.0)
+function run!(c::Connectome, dt::Float64, duration::Float64; t0::Float64=0.0, callback=nothing)
     nsteps = Int(round(duration / dt))
     empty!(c.spikelog)
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
         step!(c, dt, t)
+        if callback !== nothing
+            callback(t, net, step)
+        end
     end
 
     return c.spikelog
