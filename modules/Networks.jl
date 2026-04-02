@@ -250,13 +250,13 @@ end
   Run the network for the given duration using time step `dt`.
 
   # Arguments
-  - `input`: Function providing input spikes at time t.
-  - `input_target::Vector{Int}`: Indices of neurons to receive the input spikes.
-  - `net::Network` / `c::Connectome`: the network/connectome to simulate.
-  - `dt::Float64`: simulation time step.
-  - `duration::Float64`: total duration to run.
-  - `t0::Float64=0.0`: optional start time for the simulation.
-  - `callback::(t, net/connectome, step) -> Nothing`: Optional function called after each step.
+- `net::Network` / `c::Connectome`: the network/connectome to simulate.
+- `input`: Function providing input spikes at time t.
+- `input_target::Vector{Int}`: Indices of neurons to receive the input spikes.
+- `dt::Float64`: simulation time step.
+- `duration::Float64`: total duration to run.
+- `t0::Float64=0.0`: optional start time for the simulation.
+- `callback`: Optional function called after each step.
 
   # Returns
   - `Vector{Spike}`: the network's `spikelog` after the run.
