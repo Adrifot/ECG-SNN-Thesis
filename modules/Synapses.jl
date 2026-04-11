@@ -52,7 +52,7 @@ mutable struct Synapse
         isinhibitory::Bool = false,
         delay::Float64 = 0.0
     )
-        new(inidx, outidx, w, wmax, 0.0, 0.0, learningrate, isinhibitory, delay)
+        new(inidx, outidx, w, wmax, learningrate, isinhibitory, delay)
     end
 end
 
@@ -64,7 +64,6 @@ Update synapse state when the pre-synaptic neuron fires.
 Reduces weight based on post-synaptic trace (LTD).
 """
 function prespike!(syn::Synapse, posttrace::Float64)
-    syn.pretrace += 1.0
     # LTD: weight decreases if post-synaptic neuron fired recently
     syn.w -= syn.learningrate * posttrace * (syn.w / syn.wmax)
     syn.w = max(0.0, syn.w)
@@ -77,7 +76,6 @@ Update synapse state when the post-synaptic neuron fires.
 Increases weight based on pre-synaptic trace (LTP).
 """
 function postspike!(syn::Synapse, pretrace::Float64)
-    syn.posttrace += 1.0
     # LTP: weight increases if pre-synaptic neuron fired recently
     syn.w += syn.learningrate * pretrace * (1.0 - syn.w / syn.wmax)
     syn.w = min(syn.w, syn.wmax)

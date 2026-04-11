@@ -145,7 +145,7 @@ function step!(net::Network, dt::Float64, t::Float64)
 
     for syn in net.synapses
         pren = net.neurons[syn.inidx]
-        postn = net.neurons[syn.postidx]
+        postn = net.neurons[syn.outidx]
 
         if fired[syn.inidx]
             prespike!(syn, postn.posttrace)
