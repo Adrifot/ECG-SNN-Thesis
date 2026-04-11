@@ -168,47 +168,34 @@ end
     step!(network, dt, t)
     step!(connectome, dt, t)
     
-Advance the state of the network by one time step. This function updates all neurons,
-decays synapses, propagates spikes through the network, and logs any spikes that occurred.
+Advance the state of the network by one time step. 
 
 # Behavior
-1. Update each neuron and record which ones fired in a temporary array.
-2. Decay all synapses exponentially:
-    - If used on a `Network`, will apply **Global decay**.
-    - If used on a `Connectome`, will apply **Lazy decay** but will work faster.
-3. For each synapse where the pre-synaptic neuron fired:
-    - Apply prespike update (LTD: decrease weight based on post-synaptic trace)
-    - Inject synaptic current into the post-synaptic neuron
-4. For each synapse where the post-synaptic neuron fired, apply postspike update (LTP: increase weight based on pre-synaptic trace)
-5. Append all spikes from neurons that fired during this time step to the network's spike log.
+# TODO: document behavior
 """
 function step!(net::Network, dt::Float64, t::Float64)
-    fired = falses(length(net.neurons))
-    
-    # 1. Update each neuron and store which ones fired
-    for i in eachindex(net.neurons)
+    N = length(net.neurons)
+    fired = falses(N)
+
+    for i in 1:N
         fired[i] = update!(net.neurons[i], dt, t)
     end
 
-    # 2. Decay all synapses
     for syn in net.synapses
-        decay!(syn, dt)
-    end
+        pren = net.neurons[syn.inidx]
+        postn = net.neurons[syn.postidx]
 
-    # 3. Popagate current from pre-synaptic neurons
-    neurons = net.neurons # local copy for faster access
-    for syn in net.synapses
         if fired[syn.inidx]
-            prespike!(syn)
-            receive_spike!(neurons[syn.outidx], syn.isinhibitory ? -syn.w : syn.w)
+            prespike!(syn, postn.posttrace)
+            receive_spike!(postn, syn.isinhibitory ? -syn.w : syn.w)
         end
+
         if fired[syn.outidx]
-            postspike!(syn)
+            postspike!(syn, pren.pretrace)
         end
     end
 
-    # 4. Log spikes
-    for i in findall(identity, fired) # retreive only indeces with true values
+    for i in findall(fired)
         push!(net.spikelog, Spike(t, true, net.neurons[i].name))
     end
 end
