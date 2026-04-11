@@ -7,8 +7,7 @@ connected by synapses with STDP capabilities.
 module Networks
 
 export Network, resolve_index, addneuron!, addsynapse!, step!, run!,
-     get_incoming_syns, get_outgoing_syns,
-     Connectome, net_from_connectome, connectome_from_net
+     get_incoming_syns, get_outgoing_syns
 
 include("Neurons.jl")
 include("Synapses.jl")

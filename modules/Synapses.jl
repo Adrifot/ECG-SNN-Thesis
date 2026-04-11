@@ -5,7 +5,7 @@ Definitions for the `Synapse`` type and its STDP functions.
 """
 module Synapses
 
-export Synapse, decay!, prespike!, postspike!
+export Synapse, prespike!, postspike!
 
 """
     Synapse
