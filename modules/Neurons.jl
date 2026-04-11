@@ -45,12 +45,16 @@ All parameters are unitless unless the user enforces a consistent unit system.
 - `τ_m::Float64`: Membrane time constant.
 - `τ_s::Float64`: Synaptic decay constant.
 - `τ_ref::Float64`: Refractory period.
+- `τ_pretrace::Float64`: Time constant for pre-trace.
+- `τ_posttrace::Float64`: Time constant for post-trace.
 - `isreverse::Bool`: Whether this neuron responds to antispikes.
 - `i::Float64`: Current synaptic input.
 - `v::Float64`: Current membrane potential.
 - `t_ref::Float64`: Remaining refractory time.
 - `t_lastin::Float64`: Time of last received spike.
 - `t_lastout::Float64`: Time of last fired spike.
+- `pretrace::Float64`: Trace of last input.
+- `pretrace::Float64`: Trace of last output.
 """
 mutable struct Neuron
     name::String
@@ -61,12 +65,16 @@ mutable struct Neuron
     τ_m::Float64
     τ_s::Float64
     τ_ref::Float64
+    τ_pretrace::Float64
+    τ_posttrace::Float64
     isreverse::Bool
     i::Float64
     v::Float64
     t_ref::Float64
     t_lastin::Float64
     t_lastout::Float64
+    pretrace::Float64
+    posttrace::Float64
 
     @doc"""
         Neuron(name; kwargs...) -> Neuron
@@ -82,6 +90,8 @@ mutable struct Neuron
     - `τ_m::Float64=20.0`: Membrane time constant.
     - `τ_s::Float64=5.0`: Synaptic decay constant.
     - `τ_ref::Float64=2.0`: Refractory period.
+    - `τ_pretrace::Float64=20.0`: Pre-trace time constant.
+    - `τ_posttrace::Float64=20.0`: Post-trace time constant.
     - `isreverse::Bool=false`: Whether this neuron responds to antispikes.
     """
     function Neuron(
@@ -93,14 +103,17 @@ mutable struct Neuron
         τ_m::Float64 = 20.0,
         τ_s::Float64 = 5.0,
         τ_ref::Float64 = 2.0,
+        τ_pretrace::Float64 = 20.0,
+        τ_posttrace::Float64 = 20.0,
         isreverse::Bool = false
     )
         τ_m > 0 || throw(ArgumentError("τ_m must be positive (got $τ_m)"))
         τ_s > 0 || throw(ArgumentError("τ_s must be positive (got $τ_s)"))
         V_thresh > V_rest || throw(ArgumentError("V_thresh must be greater than V_rest"))
         τ_ref >= 0 || throw(ArgumentError("τ_ref cannot be negative (got $τ_ref)"))
+        (τ_pretrace >= 0 && τ_posttrace >= 0) || throw(ArgumentError("Trace constants cannot be negative"))
         
-        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, isreverse, 0.0, V_rest, 0.0, 0.0, 0.0)
+        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, τ_pretrace, τ_posttrace, isreverse, 0.0, V_rest, 0.0, 0.0, 0.0, 0.0, 0.0)
     end
 end
 
@@ -130,7 +143,7 @@ Advance the state of a `Neuron` by one time step using the LIF model.
 - `Bool`: `true` if the neuron fires a spike at time `t`, `false` otherwise.
 
 # Behavior
-1. **Synaptic current decay**: `n.i` decays exponentially with time constant `n.τ_s`.
+1. **Decay phase**: `n.i` and both traces decay exponentially with their time constants.
 
 2. **Refractory handling**: If the neuron is in its refractory period (`n.t_ref > 0`),
     membrane potential `n.v` is clamped to `V_reset` and no spikes can be generated.
@@ -138,13 +151,15 @@ Advance the state of a `Neuron` by one time step using the LIF model.
 3. **Membrane update**: Membrane potential `n.v` is updated using LIF dynamics.
 
 4. **Spike generation**: If membrane potential `n.v` reaches or exceeds threshold `n.V_thresh`,
-    the neuron emits a spike, potential and current are reset, time variables are updated accordingly.
+    the neuron emits a spike, potential and current are reset, time and trace variables are updated accordingly.
 """
 function update!(n::Neuron, dt::Float64, t::Float64)
 
-    # 1. Synaptic current decay
+    # 1. Synaptic current decay & trace decay
     # i(t) = i(0) * exp(-dt/τ_s)
     n.i *= exp(-dt / n.τ_s)
+    n.pretrace *= exp(-dt / n.τ_pretrace)
+    n.posttrace *= exp(-dt / n.τ_posttrace)
 
     # 2. Refractory handling
     if n.t_ref > 0
@@ -162,6 +177,8 @@ function update!(n::Neuron, dt::Float64, t::Float64)
         n.v = n.V_reset
         n.t_ref = n.τ_ref
         n.t_lastout = t 
+        n.pretrace += 1.0
+        n.posttrace += 1.0
 
         return true
     end
