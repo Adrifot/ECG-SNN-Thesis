@@ -49,8 +49,6 @@ All parameters are unitless unless the user enforces a consistent unit system.
 - `i::Float64`: Current synaptic input.
 - `v::Float64`: Current membrane potential.
 - `t_ref::Float64`: Remaining refractory time.
-- `t_lastin::Float64`: Time of last received spike.
-- `t_lastout::Float64`: Time of last fired spike.
 """
 mutable struct Neuron
     name::String
@@ -65,8 +63,6 @@ mutable struct Neuron
     i::Float64
     v::Float64
     t_ref::Float64
-    t_lastin::Float64
-    t_lastout::Float64
 
     @doc"""
         Neuron(name; kwargs...) -> Neuron
@@ -100,7 +96,7 @@ mutable struct Neuron
         V_thresh > V_rest || throw(ArgumentError("V_thresh must be greater than V_rest"))
         τ_ref >= 0 || throw(ArgumentError("τ_ref cannot be negative (got $τ_ref)"))
         
-        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, isreverse, 0.0, V_rest, 0.0, 0.0, 0.0)
+        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, isreverse, 0.0, V_rest, 0.0)
     end
 end
 

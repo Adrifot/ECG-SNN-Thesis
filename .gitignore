@@ -3,4 +3,3 @@ ecg-db/
 !.gitignore
 TODO.md
 examples/
-tests/*.md
