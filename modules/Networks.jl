@@ -127,44 +127,6 @@ function addsynapse!(net::Network, pre_name::String, post_name::String; kwargs..
 end
 
 """
-    Connectome
-A representation of an SNN network optimized for fast synaptic access via adjacency lists.
-
-# Fields
-- `neurons::Vector{Neuron}`: the `Neuron` instances that form the network.
-- `outgoing::Vector{Vector{Synapse}}`: outgoing[i] is a vector of synapses from neuron i.
-- `incoming::Vector{Vector{Synapse}}`: incoming[i] is a vector of synapses to neuron i.
-- `spikelog::Vector{Spike}`: A vector of spikes outputted by the network.
-"""
-struct Connectome
-    neurons::Vector{Neuron}
-    outgoing::Vector{Vector{Synapse}}
-    incoming::Vector{Vector{Synapse}}
-    spikelog::Vector{Spike}
-
-    @doc"""
-        Connectome(neurons, synapses) -> Connectome
-        Connectome(network) -> Connectome
-
-    Create a new `Connectome` instance from neurons and synapses.
-    Inner constructor for the `Connectome` struct.
-    """
-    function Connectome(
-        ns::Vector{Neuron}, 
-        syns::Vector{Synapse}
-    )
-        n_neurons = length(ns)
-        outgoing = [Synapse[] for _ in 1:n_neurons]
-        incoming = [Synapse[] for _ in 1:n_neurons]
-        for syn in syns
-            push!(outgoing[syn.inidx], syn)
-            push!(incoming[syn.outidx], syn)
-        end
-        return new(ns, outgoing, incoming, Spike[])
-    end
-end
-
-"""
     step!(network, dt, t)
     step!(connectome, dt, t)
     
@@ -197,36 +159,6 @@ function step!(net::Network, dt::Float64, t::Float64)
 
     for i in findall(fired)
         push!(net.spikelog, Spike(t, true, net.neurons[i].name))
-    end
-end
-
-function step!(c::Connectome, dt::Float64, t::Float64)
-    # 1. Track which neurons fired
-    fired_indices = Int[]
-    for i in eachindex(c.neurons)
-        if update!(c.neurons[i], dt, t)
-            push!(fired_indices, i)
-        end
-    end
-
-    # 2 & 3. Update Synapses and propagate current
-    for i in fired_indices
-        for syn in c.outgoing[i]
-            decay!(syn, dt) 
-            prespike!(syn)
-            target = c.neurons[syn.outidx]
-            amt = syn.isinhibitory ? -syn.w : syn.w
-            receive_spike!(target, amt)
-        end
-
-        for syn in c.incoming[i]
-            postspike!(syn)
-        end
-    end
-
-    # 4. Log spikes
-    for i in fired_indices
-        push!(c.spikelog, Spike(t, true, c.neurons[i].name))
     end
 end
 
@@ -268,25 +200,7 @@ function run!(net::Network, input, input_target::Vector{Int}, dt::Float64, durat
     return net.spikelog
 end
 
-#
-function run!(c::Connectome, input, input_target::Vector{Int}, dt::Float64, duration::Float64; 
-                t0::Float64=0.0, callback=nothing
-            )
-    nsteps = Int(round(duration / dt))
-    empty!(c.spikelog)
-    for step in 1:nsteps
-        t = t0 + (step - 1) * dt
-        for n in input_target
-            receive_spike!(c.neurons[n], input(t))
-        end
-        step!(c, dt, t)
-        if callback !== nothing
-            callback(t, c, step)
-        end
-    end
 
-    return c.spikelog
-end
 
     """
     get_outgoing_syns(network, neuron_index) -> Vector{Synapse}
@@ -302,13 +216,5 @@ get_outgoing_syns(net::Network, idx::Int) = filter(s -> s.inidx == idx, net.syna
 Return all synapses that target the neuron with index `idx`.
     """
 get_incoming_syns(net::Network, idx::Int) = filter(s -> s.outidx == idx, net.synapses)
-
-
-function Network(c::Connectome)
-    all_synapses = reduce(vcat, c.outgoing) 
-    return Network(c.neurons, all_synapses)
-end
-
-Connectome(net::Network) = Connectome(net.neurons, net.synapses)
 
 end # module Networks
