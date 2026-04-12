@@ -4,7 +4,7 @@
 """
 module Layers
 
-#export
+export NeuronLayer, SynapseLayer
 
 include("./Neurons.jl")
 include("./Synapses.jl")
@@ -26,10 +26,16 @@ struct NeuronLayer
     τ_m::Float64
     τ_s::Float64
     τ_ref::Float64
+    τ_pretrace::Float64
+    τ_posttrace::Float64
     isreverse::Bool
     v::Vector{Float64}
     i::Vector{Float64}
     t_ref::Vector{Float64}
+    pretrace::Vector{Float64}
+    posttrace::Vector{Float64}
+    t_lastin::Vector{Float64}
+    t_lastout::Vector{Float64}
 
     @doc"""
         # TODO: Inner constructor Docstring
@@ -37,7 +43,9 @@ struct NeuronLayer
     function NeuronLayer(N::Int, template::Neuron; name::String="Layer")
         return new(N, name, template.V_rest, template.V_thresh,
             template.R_m, template.τ_m, template.τ_s, template.τ_ref,
-            template.isreverse, fill(template.V_rest, N), zeros(N), zeros(N))
+            tempalte.τ_pretrace, template.τ_posttrace,
+            template.isreverse, fill(template.V_rest, N), zeros(N), zeros(N),
+            zeros(N), zeros(N))
     end
 end
 
@@ -49,8 +57,6 @@ end
 struct SynapseLayer
     w::Matrix{Float64}
     wmax::Float64
-    τ_pre::Float64
-    τ_post::Float64
     learningrate::Float64
     isinhibitory::Bool
     delay::Float64
@@ -65,8 +71,7 @@ struct SynapseLayer
         else
             initw = fill(template.w, postlayer.N, prelayer.N)
         end
-        return new(initw, template.wmax, template.τ_pre, template.τ_post, 
-                template.learningrate, template.isinhibitory, template.delay)
+        return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay)
     end
 end
 
