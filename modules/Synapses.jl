@@ -5,7 +5,7 @@ Definitions for the `Synapse`` type and its STDP functions.
 """
 module Synapses
 
-export Synapse, decay!, prespike!, postspike!
+export Synapse, prespike!, postspike!
 
 """
     Synapse
@@ -17,10 +17,6 @@ A directed connection between 2 `Neuron` instances with STDP.
 - `outidx::Int`: Index of target/output neuron.
 - `w::Float64`: Connection weight.
 - `wmax::Float64`: Maximum possible weight.
-- `pretrace::Float64`: Trace of last input spike.
-- `posttrace::Float64`: Trace of last output spike.
-- `τ_pre::Float64`: Time constant for pre-synaptic trace.
-- `τ_post::Float64`: Time constant for post-synaptic trace.
 - `learningrate::Float64`: Synaptic learning rate.
 - `isinhibitory::Bool`: Whether the synapse is inhibitory.
 - `delay::Float64`: Synaptic transmission delay in time units.
@@ -30,10 +26,6 @@ mutable struct Synapse
     outidx::Int
     w::Float64
     wmax::Float64
-    pretrace::Float64
-    posttrace::Float64
-    τ_pre::Float64
-    τ_post::Float64
     learningrate::Float64
     isinhibitory::Bool
     delay::Float64
@@ -47,8 +39,6 @@ mutable struct Synapse
     - `outidx::Int`: Index of the output neuron.
     - `w::Float64=0.5`: Current synaptic weight.
     - `wmax::Float64=1.0`: Maximum synaptic weight.
-    - `τ_pre::Float64=20.0`: Prespike interval.
-    - `τ_post::Float64=20.0`: Postspike interval.
     - `learningrate::Float64=0.01`: STDP learning weight.
     - `isinhibitory::Bool=false`: Whether this synapse is inhibitory.
     - `delay::Float64=0.0`: Synaptic transmission delay.
@@ -58,50 +48,36 @@ mutable struct Synapse
         outidx::Int; 
         w::Float64 = 0.5, 
         wmax::Float64 = 1.0, 
-        τ_pre::Float64 = 20.0, 
-        τ_post::Float64 = 20.0, 
         learningrate::Float64 = 0.01, 
         isinhibitory::Bool = false,
         delay::Float64 = 0.0
     )
-        new(inidx, outidx, w, wmax, 0.0, 0.0, τ_pre, τ_post, learningrate, isinhibitory, delay)
+        new(inidx, outidx, w, wmax, learningrate, isinhibitory, delay)
     end
 end
 
 
 """
-    decay!(synapse, dt)
-
-Exponentially decay the pre- and post-synaptic traces.
-"""
-function decay!(syn::Synapse, dt::Float64)
-    syn.pretrace *= exp(-dt / syn.τ_pre)
-    syn.posttrace *= exp(-dt / syn.τ_post)
-end
-
-"""
-    prespike!(synapse)
+    prespike!(synapse, post-trace)
 
 Update synapse state when the pre-synaptic neuron fires.
 Reduces weight based on post-synaptic trace (LTD).
 """
-function prespike!(syn::Synapse)
-    syn.pretrace += 1.0
+function prespike!(syn::Synapse, posttrace::Float64)
     # LTD: weight decreases if post-synaptic neuron fired recently
-    syn.w -= syn.learningrate * syn.posttrace * (syn.w / syn.wmax)
+    syn.w -= syn.learningrate * posttrace * (syn.w / syn.wmax)
     syn.w = max(0.0, syn.w)
 end
 
 """
-    postspike!(synapse)
+    postspike!(synapse, pre-trace)
 
 Update synapse state when the post-synaptic neuron fires.
 Increases weight based on pre-synaptic trace (LTP).
 """
-function postspike!(syn::Synapse)
-    syn.posttrace += 1.0
+function postspike!(syn::Synapse, pretrace::Float64)
     # LTP: weight increases if pre-synaptic neuron fired recently
-    syn.w += syn.learningrate * syn.pretrace * (1.0 - syn.w / syn.wmax)
+    syn.w += syn.learningrate * pretrace * (1.0 - syn.w / syn.wmax)
     syn.w = min(syn.w, syn.wmax)
 end
 
