@@ -39,10 +39,7 @@ mutable struct Network
     Create a new `Network` instance. 
     Inner constructor for the `Network` struct.
     """
-    function Network(
-        ns::Vector{Neuron}, 
-        syns::Vector{Synapse}
-    )
+    function Network(ns::Vector{Neuron}, syns::Vector{Synapse})
         index = Dict{String, Int}()
         for (i, neuron) in enumerate(ns)
             !haskey(index, neuron.name) || throw(ArgumentError("Duplicate neuron name: $(neuron.name)."))
