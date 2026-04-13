@@ -54,7 +54,7 @@ All parameters are unitless unless the user enforces a consistent unit system.
 - `t_lastin::Float64`: Time of last received spike.
 - `t_lastout::Float64`: Time of last fired spike.
 - `pretrace::Float64`: Trace of last input.
-- `pretrace::Float64`: Trace of last output.
+- `posttrace::Float64`: Trace of last output.
 """
 mutable struct Neuron
     name::String
