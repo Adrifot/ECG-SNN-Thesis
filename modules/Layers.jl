@@ -4,7 +4,7 @@
 """
 module Layers
 
-export NeuronLayer, SynapseLayer, update!, propagate!, update_post!
+export NeuronLayer, SynapseLayer, LayeredNetwork, update!, propagate!, update_post!, runlayers!
 
 include("./Neurons.jl")
 include("./Synapses.jl")
@@ -53,7 +53,9 @@ struct NeuronLayer
     end
 end
 
+
 """
+    SynapseLayer
 # TODO: Docstring
 """
 struct SynapseLayer
@@ -78,7 +80,99 @@ end
 
 
 """
-# TODO: Docstring
+    LayeredNetwork
+
+A network composed of alternating neuron and synapse layers.
+
+# Fields
+- `neuronlayers::Vector{NeuronLayer}`: The neuron layers.
+- `synapselayers::Vector{SynapseLayer}`: The synapse layers connecting neuron layers.
+"""
+struct LayeredNetwork
+    neuronlayers::Vector{NeuronLayer}
+    synapselayers::Vector{SynapseLayer}
+
+    function LayeredNetwork(neurons::Vector{NeuronLayer}, synapses::Vector{SynapseLayer})
+        length(synapses) == length(neurons) - 1 || throw(ArgumentError(
+            "Expected $(length(neurons) - 1) synapse layers, got $(length(synapses))"))
+        return new(neurons, synapses)
+    end
+end
+
+
+"""
+    runlayers!(network, dt, duration; t0=0.0, inputfn=nothing) -> LayeredNetwork
+
+Simulate the layered network for the given duration.
+
+# Arguments
+- `net::LayeredNetwork`: The network to simulate.
+- `dt::Float64`: Time step.
+- `duration::Float64`: Total simulation duration.
+- `t0::Float64=0.0`: Optional start time.
+- `inputfn`: Optional input function `inputfn(t, layer_idx) -> Float64` applied to each neuron layer at each step.
+
+# Returns
+- `LayeredNetwork`: The updated network state.
+"""
+function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing)
+    nsteps = Int(round(duration / dt))
+    nlayers = length(net.neuronlayers)
+    n_synlayers = length(net.synapselayers)
+
+    for step in 1:nsteps
+        t = t0 + (step - 1) * dt
+
+        if inputfn !== nothing
+            for (idx, layer) in enumerate(net.neuronlayers)
+                layer.is .+= inputfn(t, idx)
+            end
+        end
+
+        fired = [falses(net.neuronlayers[i].N) for i in 1:nlayers]
+
+        for (i, layer) in enumerate(net.neuronlayers)
+            fired[i] = update!(layer, dt, t)
+        end
+
+        @inbounds for i in 1:n_synlayers
+            post_idx = i + 1
+            post_idx > nlayers && continue
+
+            pre_fired = fired[i]
+            post_layer = net.neuronlayers[post_idx]
+            syn = net.synapselayers[i]
+
+            propagate!(post_layer, syn, pre_fired)
+        end
+
+        @inbounds for i in 1:n_synlayers
+            post_idx = i + 1
+            post_idx > nlayers && continue
+
+            pre_layer = net.neuronlayers[i]
+            syn = net.synapselayers[i]
+
+            update_post!(pre_layer, syn, fired[post_idx])
+        end
+    end
+
+    return net
+end
+
+
+"""
+    update!(layer, dt, t) -> BitArray
+
+Advance the state of a neuron layer by one time step.
+
+# Arguments
+- `layer::NeuronLayer`: The neuron layer.
+- `dt::Float64`: Time step.
+- `t::Float64`: Current simulation time.
+
+# Returns
+- `BitArray`: Boolean array indicating which neurons fired.
 """
 function update!(layer::NeuronLayer, dt::Float64, t::Float64)
     # Decay phase
