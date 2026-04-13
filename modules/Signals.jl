@@ -47,10 +47,10 @@ function delta_modulation(
     for t in 2:n
         diff = signal[t] - last_spike_lvl 
         if diff >= Δ
-            push!(spiketrain, Spike(t, true))
+            push!(spiketrain, Spike(Float64(t), true, "delta"))
             last_spike_lvl += Δ 
         elseif diff <= -Δ
-            push!(spiketrain, Spike(t, false))
+            push!(spiketrain, Spike(Float64(t), false, "delta"))
             last_spike_lvl -= Δ
         end
     end
