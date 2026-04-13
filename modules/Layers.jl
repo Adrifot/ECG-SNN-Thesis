@@ -101,7 +101,7 @@ end
 
 
 """
-    runlayers!(network, dt, duration; t0=0.0, inputfn=nothing) -> LayeredNetwork
+    runlayers!(network, dt, duration; t0=0.0, inputfn=nothing, callback=nothing) -> LayeredNetwork
 
 Simulate the layered network for the given duration.
 
@@ -111,11 +111,12 @@ Simulate the layered network for the given duration.
 - `duration::Float64`: Total simulation duration.
 - `t0::Float64=0.0`: Optional start time.
 - `inputfn`: Optional input function `inputfn(t, layer_idx) -> Float64` applied to each neuron layer at each step.
+- `callback`: Optional callback `callback(t, net, step)` called after each time step.
 
 # Returns
 - `LayeredNetwork`: The updated network state.
 """
-function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing)
+function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing, callback=nothing)
     nsteps = Int(round(duration / dt))
     nlayers = length(net.neuronlayers)
     n_synlayers = length(net.synapselayers)
@@ -154,6 +155,10 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
             syn = net.synapselayers[i]
 
             update_post!(pre_layer, syn, fired[post_idx])
+        end
+
+        if callback !== nothing
+            callback(t, net, step)
         end
     end
 
