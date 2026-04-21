@@ -11,11 +11,11 @@ plotly()
 n_neurons = 50
 
 input_template = Neuron("input";
-    R_m=0.5, τ_m=3.0, τ_s=50.0, τ_ref=4.0, 
+    R_m=0.1, τ_m=2.0, τ_s=60.0, τ_ref=4.0, 
     τ_pretrace=30.0, τ_posttrace=10.0)
 
 output_template = Neuron("output"; 
-    R_m=3.0, τ_m=5.0, τ_s=5.0, τ_ref=2.0, 
+    R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0, 
     τ_pretrace=30.0, τ_posttrace=10.0)
 
 input_layer = NeuronLayer(n_neurons, input_template; name="input")
@@ -25,9 +25,9 @@ synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
 synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template;
                              randomweights=true, weightscale=0.9)
 
-constant_input(t; amp=0.002, t0=5.0) = t >= t0 ? amp : 0.0
+constant_input(t; amp=0.005, t0=5.0) = t >= t0 ? amp : 0.0
 
-duration = 50.0
+duration = 100.0
 dt = 0.01
 
 nsteps = Int(round(duration / dt))
@@ -88,7 +88,7 @@ function plot_results(time_axis, voltage_trace, weight_trace, input_name, output
     end
     hline!([output_layer.V_thresh], line=:dash, color=:red, label="Threshold")
 
-    # Weight panel - mean weight evolution
+    # Weight panel - mean weight 
     pw = plot(xlabel="Time", ylabel="Weight",
               title="STDP Mean Weight Evolution",
               legend=:topright, size=(900, 200))
@@ -98,14 +98,16 @@ function plot_results(time_axis, voltage_trace, weight_trace, input_name, output
     hline!([1.0], line=:dash, color=:red, label="w_max")
 
     # Final weight distribution
-    pw_hist = plot(xlabel="Weight", ylabel="Count",
-                   title="Final Weight Distribution",
-                   legend=false, size=(400, 200))
-    histogram!(weight_trace[:, :, end], bins=30, alpha=0.7)
+    pw_hist = histogram(weight_trace[:, :, end];
+                    bins=10, alpha=0.7,
+                    xlabel="Weight", ylabel="Count",
+                    title="Final Weight Distribution",
+                    legend=false,
+                    xlim=(0, 1))
 
-    p = plot(pv, pw, pw_hist, layout=(3, 1), link=:x, size=(900, 700))
+    p = plot(pv, pw, pw_hist, layout=(3, 1), size=(900, 700))
     display(p)
-    savefig(p, "test2_large_$(replace(input_name, " " => "_")).png")
+    savefig(p, joinpath(@__DIR__, "../docs/imgs/minisnn_layered_50n_$(replace(input_name, " " => "_")).png"))
 end
 
 plot_results(time_axis, voltage_trace, weight_trace, "constant input", output_layer, n_neurons)

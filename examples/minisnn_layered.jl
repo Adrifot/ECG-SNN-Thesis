@@ -8,11 +8,11 @@ using Plots
 plotly()
 
 input_template = Neuron("input";
-    R_m=0.5, τ_m=3.0, τ_s=50.0, τ_ref=4.0, 
+    R_m=0.1, τ_m=2.0, τ_s=60.0, τ_ref=4.0, 
     τ_pretrace=30.0, τ_posttrace=10.0)
 
 output_template = Neuron("output"; 
-    R_m=3.0, τ_m=5.0, τ_s=5.0, τ_ref=2.0, 
+    R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0, 
     τ_pretrace=30.0, τ_posttrace=10.0)
 
 input_layer = NeuronLayer(1, input_template; name="input")
@@ -86,7 +86,7 @@ function plot_results(time_axis, voltage_trace, weight_trace, input_name, output
 
     p = plot(pv, pw, layout=(2, 1), link=:x, size=(900, 600))
     display(p)
-    savefig(p, "test2_$(replace(input_name, " " => "_")).png")
+    savefig(p, joinpath(@__DIR__, "../docs/imgs/minisnn_layers_$(replace(input_name, " " => "_")).png"))
 end
 
 plot_results(time_axis, voltage_trace, weight_trace, "constant input", output_layer)

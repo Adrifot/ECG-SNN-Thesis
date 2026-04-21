@@ -9,11 +9,11 @@ plotly()
 net = Network()
 
 addneuron!(net, Neuron("input";
-    R_m=0.5, τ_m=3.0, τ_s=50.0, τ_ref=4.0, 
+    R_m=0.1, τ_m=2.0, τ_s=60.0, τ_ref=4.0, 
     τ_pretrace=30.0, τ_posttrace=10.0))
 
 addneuron!(net, Neuron("output"; 
-    R_m=3.0, τ_m=5.0, τ_s=5.0, τ_ref=2.0, 
+    R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0, 
     τ_pretrace=30.0, τ_posttrace=10.0))
 
 addsynapse!(net, "input", "output"; learningrate=0.05, w=0.5, wmax=1.0)
@@ -31,9 +31,9 @@ n_synapses = length(net.synapses)
 # Data containers
 voltage_trace = zeros(n_neurons, nsteps)
 current_trace = zeros(n_neurons, nsteps)
-weight_trace  = zeros(n_synapses, nsteps)
+weight_trace = zeros(n_synapses, nsteps)
 pre_trace_log = zeros(n_neurons, nsteps) 
-time_axis     = zeros(nsteps)
+time_axis = zeros(nsteps)
 
 callback = function(t, net, step)
     time_axis[step] = t
@@ -90,7 +90,8 @@ function plot_results(time_axis, voltage_trace, weight_trace, spikes, net, input
 
     p = plot(pv, pw, pr, layout=(3, 1), link=:x, size=(900, 800))
     display(p)
-    savefig(p, "test_$(replace(input_name, " " => "_")).png")
+    savefig(p, joinpath(@__DIR__, "../docs/imgs/minisnn_$(replace(input_name, " " => "_")).png"))
+    println("Plot saved to /docs/imgs/")
 end
 
 plot_results(time_axis, voltage_trace, weight_trace, net.spikelog, net, "constant input")
