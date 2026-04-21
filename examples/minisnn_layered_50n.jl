@@ -39,7 +39,10 @@ weight_trace = zeros(n_neurons, n_neurons, nsteps)
 pre_trace_log = zeros(n_layers, n_neurons, nsteps)
 time_axis = zeros(nsteps)
 
-callback = function(t, input_layer, output_layer, syn_layer, step)
+callback = function(t, net, step)
+    input_layer = net.neuronlayers[1]
+    output_layer = net.neuronlayers[2]
+
     time_axis[step] = t
     voltage_trace[1, :, step] = input_layer.vs
     current_trace[1, :, step] = input_layer.is
@@ -49,31 +52,12 @@ callback = function(t, input_layer, output_layer, syn_layer, step)
     current_trace[2, :, step] = output_layer.is
     pre_trace_log[2, :, step] = output_layer.pretraces
 
-    weight_trace[:, :, step] = syn_layer.ws
+    weight_trace[:, :, step] = net.synapselayers[1].ws
 end
 
-function run_layers!(input_layer, output_layer, syn_layer, input_fn, dt, duration; callback=nothing)
-    nsteps = Int(round(duration / dt))
-    for step in 1:nsteps
-        t = (step - 1) * dt
+net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
 
-        for i in 1:input_layer.N
-            input_layer.is[i] += input_fn(t)
-        end
-
-        fired_pre = update!(input_layer, dt, t)
-        fired_post = update!(output_layer, dt, t)
-
-        propagate!(output_layer, syn_layer, fired_pre)
-        update_post!(input_layer, syn_layer, fired_post)
-
-        if callback !== nothing
-            callback(t, input_layer, output_layer, syn_layer, step)
-        end
-    end
-end
-
-run_layers!(input_layer, output_layer, synapse_layer, constant_input, dt, duration; callback=callback)
+runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? constant_input(t) : 0.0), callback=callback)
 
 function plot_results(time_axis, voltage_trace, weight_trace, input_name, output_layer, n_neurons)
     # Voltage panel - show mean and std
