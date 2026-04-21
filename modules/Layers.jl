@@ -68,6 +68,8 @@ struct SynapseLayer
     @doc"""
         # TODO: Docstring
     """
+    # TODO: add Gaussian (maybe also other) distributions for randomweights
+    # TODO: add options for sparse layering (?)
     function SynapseLayer(prelayer::NeuronLayer, postlayer::NeuronLayer, template::Synapse;
                          randomweights::Bool=true, weightscale::Float64=0.25)
         initw = randomweights ? 
