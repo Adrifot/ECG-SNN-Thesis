@@ -123,40 +123,51 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
     nlayers = length(net.neuronlayers)
     n_synlayers = length(net.synapselayers)
 
+    # Pre-allocate fired array and trace snapshots
+    fired = [falses(net.neuronlayers[i].N) for i in 1:nlayers]
+    old_pretraces = [copy(net.neuronlayers[i].pretraces) for i in 1:nlayers]
+    old_posttraces = [copy(net.neuronlayers[i].posttraces) for i in 1:nlayers]
+
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
 
+        # Apply external input
         if inputfn !== nothing
             for (idx, layer) in enumerate(net.neuronlayers)
                 layer.is .+= inputfn(t, idx)
             end
         end
 
-        fired = [falses(net.neuronlayers[i].N) for i in 1:nlayers]
+        # Save current traces before updating 
+        for i in 1:nlayers
+            copyto!(old_pretraces[i], net.neuronlayers[i].pretraces)
+            copyto!(old_posttraces[i], net.neuronlayers[i].posttraces)
+        end
 
+        # Update all neuron states and detect spikes
         for (i, layer) in enumerate(net.neuronlayers)
             fired[i] = update!(layer, dt, t)
         end
 
+        # Synaptic propagation and STDP learning 
         @inbounds for i in 1:n_synlayers
             post_idx = i + 1
             post_idx > nlayers && continue
 
             pre_fired = fired[i]
             post_layer = net.neuronlayers[post_idx]
-            syn = net.synapselayers[i]
-
-            propagate!(post_layer, syn, pre_fired)
-        end
-
-        @inbounds for i in 1:n_synlayers
-            post_idx = i + 1
-            post_idx > nlayers && continue
-
             pre_layer = net.neuronlayers[i]
             syn = net.synapselayers[i]
 
-            update_post!(pre_layer, syn, fired[post_idx])
+            # Forward propagation
+            if any(pre_fired)
+                propagate!(post_layer, syn, pre_fired, old_posttraces[post_idx])
+            end
+            
+            # STDP weight update
+            if any(fired[post_idx])
+                update_post!(syn, fired[post_idx], old_pretraces[i])
+            end
         end
 
         if callback !== nothing
@@ -210,9 +221,17 @@ function update!(layer::NeuronLayer, dt::Float64, t::Float64)
 end
 
 """
-# TODO: Docstring
+    propagate!(post, syn, fired, post_posttraces)
+
+Propagate pre-synaptic spikes to the post-synaptic layer and apply STDP LTD.
+
+# Arguments
+- `post::NeuronLayer`: Post-synaptic neuron layer.
+- `syn::SynapseLayer`: Synapses connecting pre to post.
+- `fired::BitArray`: Boolean vector indicating which pre-synaptic neurons fired.
+- `post_posttraces::Vector{Float64}`: Post-synaptic spike traces from the *previous* timestep (for STDP causality).
 """
-function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray)
+function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray, post_posttraces::Vector{Float64})
     any(fired) || return
 
     # Apply weights
@@ -220,18 +239,25 @@ function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray)
     post.is .+= sum(w_impact[:, fired], dims=2)[:]
 
     # STDP LTD
-    ltd = syn.learningrate .* (post.posttraces * fired') .* (syn.ws ./ syn.wmax)
+    ltd = syn.learningrate .* (post_posttraces * fired') .* (syn.ws ./ syn.wmax)
     syn.ws .= max.(0.0, syn.ws .- ltd) 
 end
 
 """
-# TODO: Docstring
+    update_post!(syn, postfired, pre_pretraces)
+
+Update synaptic weights based on post-synaptic spikes and pre-synaptic traces (STDP LTP).
+
+# Arguments
+- `syn::SynapseLayer`: Synapses to update.
+- `postfired::BitArray`: Boolean vector indicating which post-synaptic neurons fired.
+- `pre_pretraces::Vector{Float64}`: Pre-synaptic spike traces from the *previous* timestep (for STDP causality).
 """
-function update_post!(pre::NeuronLayer, syn::SynapseLayer, postfired::BitArray)
+function update_post!(syn::SynapseLayer, postfired::BitArray, pre_pretraces::Vector{Float64})
     any(postfired) || return
     
     # STDP LTP
-    ltp = syn.learningrate .* (postfired * pre.pretraces') .* (1.0 .- syn.ws ./ syn.wmax)
+    ltp = syn.learningrate .* (postfired * pre_pretraces') .* (1.0 .- syn.ws ./ syn.wmax)
     syn.ws .= min.(syn.wmax, syn.ws .+ ltp)
 end
 
