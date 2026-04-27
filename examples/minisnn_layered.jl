@@ -41,12 +41,12 @@ callback = function(t, net, step)
     output_layer = net.neuronlayers[2]
 
     time_axis[step] = t
-    voltage_trace[1, step] = input_layer.vs[1]
-    current_trace[1, step] = input_layer.is[1]
+    voltage_trace[1, step] = input_layer.v[1]
+    current_trace[1, step] = input_layer.i[1]
     pre_trace_log[1, step] = input_layer.pretraces[1]
 
-    voltage_trace[2, step] = output_layer.vs[1]
-    current_trace[2, step] = output_layer.is[1]
+    voltage_trace[2, step] = output_layer.v[1]
+    current_trace[2, step] = output_layer.i[1]
     pre_trace_log[2, step] = output_layer.pretraces[1]
 
     weight_trace[step] = net.synapselayers[1].ws[1, 1]
