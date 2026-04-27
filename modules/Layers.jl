@@ -8,9 +8,11 @@ export NeuronLayer, SynapseLayer, LayeredNetwork, update!, propagate!, update_po
 
 include("./Neurons.jl")
 include("./Synapses.jl")
+include("./Utils.jl")
 
 using .Neurons  
 using .Synapses
+using .Utils
 
 """
     NeuronLayer
@@ -39,6 +41,7 @@ struct NeuronLayer
 
     @doc"""
     # TODO: docstring
+    # TODO: add τ_m and R_m variation
     """
     function NeuronLayer(N::Int, template::Neuron; name::String="Layer")
         return new(
@@ -68,14 +71,12 @@ struct SynapseLayer
     @doc"""
         # TODO: Docstring
     """
-    # TODO: add Gaussian (maybe also other) distributions for randomweights
-    # TODO: add options for sparse layering (?)
     function SynapseLayer(prelayer::NeuronLayer, postlayer::NeuronLayer, template::Synapse;
-                         randomweights::Bool=true, weightscale::Float64=0.25)
-        initw = randomweights ? 
-                rand(postlayer.N, prelayer.N) .* (template.wmax * weightscale) : 
-                fill(template.w, postlayer.N, prelayer.N)
-        
+                         dist::AbstractDist, density::Float64)
+        initw = clamp.(init_ws(dist, postlayer.N, prelayer.N), 0.01, template.wmax)
+        bitmask = rand(postlayer.N, prelayer.N) .< density
+        initw .*= bitmask
+
         return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay)
     end
 end

@@ -19,7 +19,7 @@ A directed connection between 2 `Neuron` instances with STDP.
 - `wmax::Float64`: Maximum possible weight.
 - `learningrate::Float64`: Synaptic learning rate.
 - `isinhibitory::Bool`: Whether the synapse is inhibitory.
-- `delay::Float64`: Synaptic transmission delay in time units.
+- `delay::Float64`: Synaptic transmission delay in time units. # NOTE: delay not used for now
 """
 mutable struct Synapse
     inidx::Int
