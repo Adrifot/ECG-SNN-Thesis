@@ -28,8 +28,8 @@ output_template = Neuron("output";
     R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0,
     τ_pretrace=30.0, τ_posttrace=10.0)
 
-input_layer = NeuronLayer(n_neurons, input_template; name="input")
-output_layer = NeuronLayer(n_neurons, output_template; name="output")
+input_layer = NeuronLayer(n_neurons, input_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
+output_layer = NeuronLayer(n_neurons, output_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
 
 synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
 synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5)
@@ -67,18 +67,21 @@ callback = function(t, net, step)
     output_layer = net.neuronlayers[2]
 
     time_axis[step] = t
-    voltage_trace[1, :, step] = input_layer.vs
-    current_trace[1, :, step] = input_layer.is
+    voltage_trace[1, :, step] = input_layer.v
+    current_trace[1, :, step] = input_layer.i
     pre_trace_log[1, :, step] = input_layer.pretraces
 
-    voltage_trace[2, :, step] = output_layer.vs
-    current_trace[2, :, step] = output_layer.is
+    voltage_trace[2, :, step] = output_layer.v
+    current_trace[2, :, step] = output_layer.i
     pre_trace_log[2, :, step] = output_layer.pretraces
 
     weight_trace[:, :, step] = net.synapselayers[1].ws
 end
 
 net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
+
+pp = plot(heatmap(net.synapselayers[1].ws))
+display(pp)
 
 runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? input_fn(t) : 0.0), callback=callback)
 
