@@ -2,9 +2,11 @@ include("../modules/Layers.jl")
 using .Layers
 using .Layers.Neurons
 using .Layers.Synapses
+using .Layers.Utils
 using .Layers: update!, propagate!, update_post!
 
 include("../modules/Signals.jl")
+
 using .Signals
 
 using Plots
@@ -30,8 +32,7 @@ input_layer = NeuronLayer(n_neurons, input_template; name="input")
 output_layer = NeuronLayer(n_neurons, output_template; name="output")
 
 synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
-synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template;
-                             randomweights=true, weightscale=1.0)
+synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5)
 
 spiketrain, signal_length, filtered_signal = get_spiketrain(PATIENT, SESSION; Δ=Δ)
 
@@ -81,6 +82,8 @@ net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
 
 runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? input_fn(t) : 0.0), callback=callback)
 
+# PLOTTING -------------------------------------------------------------------------------------
+
 function plot_results(time_axis, voltage_trace, weight_trace, input_name, output_layer, n_neurons)
     pv = plot(xlabel="Time (s)", ylabel="Voltage",
               title="$input_name — Membrane Potentials (mean ± std)",
@@ -114,3 +117,6 @@ function plot_results(time_axis, voltage_trace, weight_trace, input_name, output
 end
 
 plot_results(time_axis, voltage_trace, weight_trace, "ECG delta-modulated spiketrain", output_layer, n_neurons)
+
+pp = plot(heatmap(net.synapselayers[1].ws))
+display(pp)
