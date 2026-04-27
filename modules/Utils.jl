@@ -3,7 +3,7 @@
 # TODO: Docstring
 """
 module Utils
-export AbstractDist, NormalDist, ConstantDist, UniformDist, init_ws
+export AbstractDist, NormalDist, ConstantDist, UniformDist, init_ws, _expand_vector_param, _vector_with_noise
 
 using Distributions
 using Random
@@ -34,6 +34,21 @@ end
 
 function init_ws(dist::NormalDist, x::Int, y::Int)
     return rand(Normal(dist.μ, dist.σ), x, y)
+end
+
+function _expand_vector_param(value, N::Int)
+    v = isa(value, AbstractVector) ? collect(value) : fill(value, N)
+    length(v) == N || throw(ArgumentError("Expected vector of length $N, got $(length(v))"))
+    return v
+end
+
+function _vector_with_noise(value, deviation::Float64, N::Int; rng::AbstractRNG=Random.GLOBAL_RNG, minval=-Inf)
+    base = _expand_vector_param(value, N)
+    if deviation == 0.0
+        return base
+    end
+    noisy = base .+ randn(rng, N) .* deviation
+    return minval == -Inf ? noisy : clamp.(noisy, minval, Inf)
 end
 
 end # module Utils
