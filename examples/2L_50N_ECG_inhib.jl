@@ -26,15 +26,15 @@ in_template = Neuron("input"; R_m=0.5, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
 out_template = Neuron("output"; R_m=3.0, τ_m=6.0, τ_s=6.0, τ_ref=2.0,
                 τ_pretrace=20.0, τ_posttrace=10.0)
 
-syn_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
+syn_template = Synapse(1, 2; learningrate=0.05, wmax=1.0)
 
-inhib_template = Synapse(1, 1; learningrate=0.0, w=0.25, wmax=1.0, isinhibitory=true)
+inhib_template = Synapse(1, 1; learningrate=0.0, wmax=1.0, isinhibitory=true)
 
 inlayer = NeuronLayer(N, in_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
 outlayer = NeuronLayer(N, out_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
-synlayer = SynapseLayer(inlayer, outlayer, syn_template; dist=NormalDist(0.5, 0.1), density=0.5, pre_idx=1, post_idx=2)
-inhiblayer1 = SynapseLayer(inlayer, inlayer, inhib_template; dist=ConstantDist(0.15), density=0.5, pre_idx=1, post_idx=1)
-inhiblayer2 = SynapseLayer(outlayer, outlayer, inhib_template; dist=ConstantDist(0.15), density=0.5, pre_idx=2, post_idx=2)
+synlayer = SynapseLayer(inlayer, outlayer, syn_template; dist=NormalDist(0.5, 0.2), density=0.75, pre_idx=1, post_idx=2)
+inhiblayer1 = SynapseLayer(inlayer, inlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=1, post_idx=1)
+inhiblayer2 = SynapseLayer(outlayer, outlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=2, post_idx=2)
 
 net = LayeredNetwork([inlayer, outlayer], [synlayer, inhiblayer1, inhiblayer2])
 
