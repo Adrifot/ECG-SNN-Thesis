@@ -80,9 +80,6 @@ end
 
 net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
 
-pp = plot(heatmap(net.synapselayers[1].ws))
-display(pp)
-
 runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? input_fn(t) : 0.0), callback=callback)
 
 # PLOTTING -------------------------------------------------------------------------------------
