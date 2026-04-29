@@ -1,49 +1,52 @@
 include("../modules/Layers.jl")
+include("../modules/Signals.jl")
+
+using .Signals
 using .Layers
 using .Layers.Neurons
 using .Layers.Synapses
 using .Layers.Utils
 using .Layers: update!, propagate!, update_post!
 
-include("../modules/Signals.jl")
-
-using .Signals
-
 using Plots
 using Statistics
+
 plotly()
 
 PATIENT = "121"
 SESSION = "s0311lre"
+
 Δ = 100.0
 fs = 1000.0
+N = 50
 
-n_neurons = 50
+in_template = Neuron("input"; R_m=0.5, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
+                τ_pretrace=20.0, τ_posttrace=10.0)
 
-input_template = Neuron("input";
-    R_m=0.1, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
-    τ_pretrace=30.0, τ_posttrace=10.0)
+out_template = Neuron("output"; R_m=3.0, τ_m=6.0, τ_s=6.0, τ_ref=2.0,
+                τ_pretrace=20.0, τ_posttrace=10.0)
 
-output_template = Neuron("output";
-    R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0,
-    τ_pretrace=30.0, τ_posttrace=10.0)
+syn_template = Synapse(1, 2; learningrate=0.05, wmax=1.0)
 
-input_layer = NeuronLayer(n_neurons, input_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
-output_layer = NeuronLayer(n_neurons, output_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
+inhib_template = Synapse(1, 1; learningrate=0.0, wmax=1.0, isinhibitory=true)
 
-synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
-synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5, pre_idx=1, post_idx=2)
+inlayer = NeuronLayer(N, in_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+outlayer = NeuronLayer(N, out_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+synlayer = SynapseLayer(inlayer, outlayer, syn_template; dist=NormalDist(0.5, 0.2), density=0.75, pre_idx=1, post_idx=2)
+inhiblayer1 = SynapseLayer(inlayer, inlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=1, post_idx=1)
+inhiblayer2 = SynapseLayer(outlayer, outlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=2, post_idx=2)
 
-spiketrain, signal_length, filtered_signal = get_spiketrain(PATIENT, SESSION; Δ=Δ)
+net = LayeredNetwork([inlayer, outlayer], [synlayer, inhiblayer1, inhiblayer2])
 
-duration = min(25.0, signal_length / fs)
+spiketrain, siglen, filtsig = get_spiketrain(PATIENT, SESSION; Δ=Δ)
+tsim = min(25.0, siglen/fs)
 dt = 0.001
-
-nsteps = Int(round(duration / dt))
-n_layers = 2
+nsteps = Int(round(tsim/dt))
+L = 2
 
 pulse_amp = 10.0
 input_pulses = zeros(nsteps)
+
 for spike in spiketrain
     step = Int(floor(((spike.time - 1.0) / fs) / dt)) + 1
     if 1 <= step <= nsteps
@@ -56,10 +59,10 @@ input_fn = t -> begin
     return input_pulses[idx]
 end
 
-voltage_trace = zeros(n_layers, n_neurons, nsteps)
-current_trace = zeros(n_layers, n_neurons, nsteps)
-weight_trace = zeros(n_neurons, n_neurons, nsteps)
-pre_trace_log = zeros(n_layers, n_neurons, nsteps)
+voltage_trace = zeros(L, N, nsteps)
+current_trace = zeros(L, N, nsteps)
+weight_trace = zeros(N, N, nsteps)
+pre_trace_log = zeros(L, N, nsteps)
 time_axis = zeros(nsteps)
 
 callback = function(t, net, step)
@@ -78,9 +81,22 @@ callback = function(t, net, step)
     weight_trace[:, :, step] = net.synapselayers[1].ws
 end
 
-net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
+println("=== Before runlayers! ===")
+println("Weight min: ", minimum(net.synapselayers[1].ws))
+println("Weight max: ", maximum(net.synapselayers[1].ws))
+println("Weight mean: ", mean(net.synapselayers[1].ws))
+println("Weight std: ", std(net.synapselayers[1].ws))
 
-runlayers!(net, dt, duration; inputfn=input_fn, callback=callback)
+pp = plot(heatmap(net.synapselayers[1].ws, clims=(0.0, 1.0)))
+display(pp)
+
+runlayers!(net, dt, tsim; inputfn=input_fn, callback=callback)
+
+println("\n=== After runlayers! ===")
+println("Weight min: ", minimum(net.synapselayers[1].ws))
+println("Weight max: ", maximum(net.synapselayers[1].ws))
+println("Weight mean: ", mean(net.synapselayers[1].ws))
+println("Weight std: ", std(net.synapselayers[1].ws))
 
 # PLOTTING -------------------------------------------------------------------------------------
 
@@ -113,10 +129,10 @@ function plot_results(time_axis, voltage_trace, weight_trace, input_name, output
 
     p = plot(pv, pw, pw_hist, layout=(3, 1), size=(900, 700))
     display(p)
-    savefig(p, joinpath(@__DIR__, "../docs/imgs/minisnn_layered_50n_ECG.png"))
+    savefig(p, joinpath(@__DIR__, "../docs/imgs/2L_50N_ECG_inhib.png"))
 end
 
-plot_results(time_axis, voltage_trace, weight_trace, "ECG delta-modulated spiketrain", output_layer, n_neurons)
+plot_results(time_axis, voltage_trace, weight_trace, "ECG", outlayer, N)
 
-pp = plot(heatmap(net.synapselayers[1].ws))
+pp = plot(heatmap(net.synapselayers[1].ws, clims=(0.0, 1.0)))
 display(pp)

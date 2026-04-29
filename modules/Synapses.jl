@@ -77,8 +77,10 @@ Increases weight based on pre-synaptic trace (LTP).
 """
 function postspike!(syn::Synapse, pretrace::Float64)
     # LTP: weight increases if pre-synaptic neuron fired recently
-    syn.w += syn.learningrate * pretrace * (1.0 - syn.w / syn.wmax)
-    syn.w = min(syn.w, syn.wmax)
+    if syn.w > 0
+        syn.w += syn.learningrate * pretrace * (1.0 - syn.w / syn.wmax)
+        syn.w = min(syn.w, syn.wmax)
+    end
 end
 
 end #module Synapses

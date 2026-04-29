@@ -2,6 +2,7 @@ include("../modules/Layers.jl")
 using .Layers
 using .Layers.Neurons
 using .Layers.Synapses
+using .Layers.Utils
 using .Layers: update!, propagate!, update_post!
 
 using Plots
@@ -23,7 +24,7 @@ output_layer = NeuronLayer(n_neurons, output_template; name="output")
 
 synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
 synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template;
-                             randomweights=true, weightscale=0.9)
+                             dist=UniformDist(0.1, 0.9), density=1.0, pre_idx=1, post_idx=2)
 
 constant_input(t; amp=0.005, t0=5.0) = t >= t0 ? amp : 0.0
 
@@ -57,7 +58,7 @@ end
 
 net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
 
-runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? constant_input(t) : 0.0), callback=callback)
+runlayers!(net, dt, duration; inputfn=constant_input, callback=callback)
 
 function plot_results(time_axis, voltage_trace, weight_trace, input_name, output_layer, n_neurons)
     # Voltage panel - show mean and std
