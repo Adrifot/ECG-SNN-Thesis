@@ -109,6 +109,11 @@ struct SynapseLayer
         bitmask = rand(postlayer.N, prelayer.N) .< density
         initw .*= bitmask
 
+        # Zero diagonal for lateral inhibition to prevent self-inhibition
+        if template.isinhibitory && prelayer === postlayer
+            initw[1:prelayer.N+1:end] .= 0
+        end
+
         return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay, pre_idx, post_idx)
     end
 end
@@ -273,10 +278,11 @@ Update synaptic weights based on post-synaptic spikes and pre-synaptic traces (S
 """
 function update_post!(syn::SynapseLayer, postfired::BitArray, pre_pretraces::Vector{Float64})
     any(postfired) || return
-    
+
     # STDP LTP
     ltp = syn.learningrate .* (postfired * pre_pretraces') .* (1.0 .- syn.ws ./ syn.wmax)
-    syn.ws .= min.(syn.wmax, syn.ws .+ ltp)
+    active = syn.ws .> 0
+    syn.ws[active] .= min.(syn.wmax, syn.ws[active] .+ ltp[active])
 end
 
 end # module Layers
