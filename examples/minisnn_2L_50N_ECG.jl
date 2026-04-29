@@ -32,7 +32,7 @@ input_layer = NeuronLayer(n_neurons, input_template; name="input", V_thresh_dev=
 output_layer = NeuronLayer(n_neurons, output_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
 
 synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
-synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5)
+synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5, pre_idx=1, post_idx=2)
 
 spiketrain, signal_length, filtered_signal = get_spiketrain(PATIENT, SESSION; Δ=Δ)
 
@@ -80,7 +80,7 @@ end
 
 net = LayeredNetwork([input_layer, output_layer], [synapse_layer])
 
-runlayers!(net, dt, duration; inputfn=(t, layer_idx) -> (layer_idx == 1 ? input_fn(t) : 0.0), callback=callback)
+runlayers!(net, dt, duration; inputfn=input_fn, callback=callback)
 
 # PLOTTING -------------------------------------------------------------------------------------
 
