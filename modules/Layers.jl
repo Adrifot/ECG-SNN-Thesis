@@ -97,17 +97,19 @@ struct SynapseLayer
     learningrate::Float64
     isinhibitory::Bool
     delay::Float64
+    pre_idx::Int
+    post_idx::Int
 
     @doc"""
         # TODO: Docstring
     """
     function SynapseLayer(prelayer::NeuronLayer, postlayer::NeuronLayer, template::Synapse;
-                         dist::AbstractDist, density::Float64)
+                         dist::AbstractDist, density::Float64, pre_idx::Int, post_idx::Int)
         initw = clamp.(init_ws(dist, postlayer.N, prelayer.N), 0.01, template.wmax)
         bitmask = rand(postlayer.N, prelayer.N) .< density
         initw .*= bitmask
 
-        return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay)
+        return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay, pre_idx, post_idx)
     end
 end
 
@@ -124,12 +126,6 @@ A network composed of alternating neuron and synapse layers.
 struct LayeredNetwork
     neuronlayers::Vector{NeuronLayer}
     synapselayers::Vector{SynapseLayer}
-
-    function LayeredNetwork(neurons::Vector{NeuronLayer}, synapses::Vector{SynapseLayer})
-        length(synapses) == length(neurons) - 1 || throw(ArgumentError(
-            "Expected $(length(neurons) - 1) synapse layers, got $(length(synapses))"))
-        return new(neurons, synapses)
-    end
 end
 
 
@@ -143,7 +139,7 @@ Simulate the layered network for the given duration.
 - `dt::Float64`: Time step.
 - `duration::Float64`: Total simulation duration.
 - `t0::Float64=0.0`: Optional start time.
-- `inputfn`: Optional input function `inputfn(t, layer_idx) -> Float64` applied to each neuron layer at each step.
+- `inputfn`: Optional input function `inputfn(t) -> Float64` applied to each neuron in the input layer at each step.
 - `callback`: Optional callback `callback(t, net, step)` called after each time step.
 
 # Returns
@@ -152,7 +148,6 @@ Simulate the layered network for the given duration.
 function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing, callback=nothing)
     nsteps = Int(round(duration / dt))
     nlayers = length(net.neuronlayers)
-    n_synlayers = length(net.synapselayers)
 
     # Pre-allocate fired array and trace snapshots
     fired = [falses(net.neuronlayers[i].N) for i in 1:nlayers]
@@ -162,11 +157,10 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
 
-        # Apply external input
-        if inputfn !== nothing
-            for (idx, layer) in enumerate(net.neuronlayers)
-                layer.i .+= inputfn(t, idx)
-            end
+        # Apply external input to the input layer
+        if inputfn !== nothing && nlayers > 0 # NOTE: may change that to make it work for several input layers
+            layer = net.neuronlayers[1]
+            layer.i .+= inputfn(t)
         end
 
         # Save current traces before updating 
@@ -178,26 +172,19 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
         # Update all neuron states and detect spikes
         for (i, layer) in enumerate(net.neuronlayers)
             fired[i] = update!(layer, dt, t)
-        end
+        end 
+    
+        for syn in net.synapselayers
+            prelayer = net.neuronlayers[syn.pre_idx]
+            postlayer = net.neuronlayers[syn.post_idx]
+            prefired = fired[syn.pre_idx]
 
-        # Synaptic propagation and STDP learning 
-        @inbounds for i in 1:n_synlayers
-            post_idx = i + 1
-            post_idx > nlayers && continue
-
-            pre_fired = fired[i]
-            post_layer = net.neuronlayers[post_idx]
-            pre_layer = net.neuronlayers[i]
-            syn = net.synapselayers[i]
-
-            # Forward propagation
-            if any(pre_fired)
-                propagate!(post_layer, syn, pre_fired, old_posttraces[post_idx])
+            if any(prefired)
+                propagate!(postlayer, syn, prefired, old_posttraces[syn.post_idx])
             end
-            
-            # STDP weight update
-            if any(fired[post_idx])
-                update_post!(syn, fired[post_idx], old_pretraces[i])
+
+            if any(fired[syn.post_idx])
+                update_post!(syn, fired[syn.post_idx], old_pretraces[syn.pre_idx])
             end
         end
 
