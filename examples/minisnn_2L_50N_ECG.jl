@@ -20,19 +20,17 @@ fs = 1000.0
 
 n_neurons = 50
 
-input_template = Neuron("input";
-    R_m=0.1, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
-    τ_pretrace=30.0, τ_posttrace=10.0)
+input_template = Neuron("input"; R_m=0.5, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
+                τ_pretrace=20.0, τ_posttrace=10.0)
 
-output_template = Neuron("output";
-    R_m=3.0, τ_m=6.5, τ_s=6.0, τ_ref=2.0,
-    τ_pretrace=30.0, τ_posttrace=10.0)
+output_template = Neuron("output"; R_m=3.0, τ_m=6.0, τ_s=6.0, τ_ref=2.0,
+                τ_pretrace=20.0, τ_posttrace=10.0)
 
-input_layer = NeuronLayer(n_neurons, input_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
-output_layer = NeuronLayer(n_neurons, output_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.25)
+input_layer =  NeuronLayer(n_neurons, input_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+output_layer =  NeuronLayer(n_neurons, output_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
 
 synapse_template = Synapse(1, 2; learningrate=0.05, w=0.5, wmax=1.0)
-synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.1), density=0.5, pre_idx=1, post_idx=2)
+synapse_layer = SynapseLayer(input_layer, output_layer, synapse_template; dist=NormalDist(0.5, 0.2), density=0.75, pre_idx=1, post_idx=2)
 
 spiketrain, signal_length, filtered_signal = get_spiketrain(PATIENT, SESSION; Δ=Δ)
 
