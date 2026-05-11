@@ -14,6 +14,7 @@ using .Neurons
 using .Synapses
 using .Utils
 using Random
+using LinearAlgebra
 
 """
     NeuronLayer
@@ -111,7 +112,7 @@ struct SynapseLayer
 
         # Zero diagonal for lateral inhibition to prevent self-inhibition
         if template.isinhibitory && prelayer === postlayer
-            initw[diagin(initw)] .= 0
+            initw[diagind(initw)] .= 0
         end
 
         return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay, pre_idx, post_idx)
