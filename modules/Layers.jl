@@ -111,7 +111,7 @@ struct SynapseLayer
 
         # Zero diagonal for lateral inhibition to prevent self-inhibition
         if template.isinhibitory && prelayer === postlayer
-            initw[1:prelayer.N+1:end] .= 0
+            initw[diagin(initw)] .= 0
         end
 
         return new(initw, template.wmax, template.learningrate, template.isinhibitory, template.delay, pre_idx, post_idx)
