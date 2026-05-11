@@ -30,11 +30,11 @@ syn_template = Synapse(1, 2; learningrate=0.05, wmax=1.0)
 
 inhib_template = Synapse(1, 1; learningrate=0.0, wmax=1.0, isinhibitory=true)
 
-inlayer = NeuronLayer(N, in_template; name="input", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
-outlayer = NeuronLayer(N, out_template; name="output", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+inlayer = NeuronLayer(N, in_template; name="input", V_thresh_dev=0.1, R_m_dev=0.1, τ_m_dev=0.15)
+outlayer = NeuronLayer(N, out_template; name="output", V_thresh_dev=0.1, R_m_dev=0.1, τ_m_dev=0.15)
 synlayer = SynapseLayer(inlayer, outlayer, syn_template; dist=NormalDist(0.5, 0.2), density=0.75, pre_idx=1, post_idx=2)
-inhiblayer1 = SynapseLayer(inlayer, inlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=1, post_idx=1)
-inhiblayer2 = SynapseLayer(outlayer, outlayer, inhib_template; dist=ConstantDist(0.15), density=0.75, pre_idx=2, post_idx=2)
+inhiblayer1 = SynapseLayer(inlayer, inlayer, inhib_template; dist=UniformDist(0.25, 0.5), density=0.4, pre_idx=1, post_idx=1)
+inhiblayer2 = SynapseLayer(outlayer, outlayer, inhib_template; dist=UniformDist(0.25, 0.5), density=0.4, pre_idx=2, post_idx=2)
 
 net = LayeredNetwork([inlayer, outlayer], [synlayer, inhiblayer1, inhiblayer2])
 
@@ -44,7 +44,7 @@ dt = 0.001
 nsteps = Int(round(tsim/dt))
 L = 2
 
-pulse_amp = 10.0
+pulse_amp = 25.0
 input_pulses = zeros(nsteps)
 
 for spike in spiketrain
