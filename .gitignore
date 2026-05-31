@@ -3,3 +3,4 @@ ecg-db/
 !.gitignore
 TODO.md
 tests/*.md
+docs/latex/
