@@ -163,13 +163,24 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
 
-        # Apply external input to the input layer
-        if inputfn !== nothing && nlayers > 0 # NOTE: may change that to make it work for several input layers
-            layer = net.neuronlayers[1]
-            layer.i .+= inputfn(t)
+        # Apply external input to the input layer(s)
+        if inputfn !== nothing && nlayers > 0
+            input_val = inputfn(t)
+            if isa(input_val, Number)
+                net.neuronlayers[1].i .+= input_val
+            elseif isa(input_val, AbstractVector)
+                for (idx, v) in enumerate(input_val)
+                    if idx > nlayers
+                        break
+                    end
+                    net.neuronlayers[idx].i .+= v
+                end
+            else
+                error("inputfn(t) must return either a Number or an AbstractVector")
+            end
         end
 
-        # Save current traces before updating 
+        # Save current traces before updating
         for i in 1:nlayers
             copyto!(old_pretraces[i], net.neuronlayers[i].pretraces)
             copyto!(old_posttraces[i], net.neuronlayers[i].posttraces)
