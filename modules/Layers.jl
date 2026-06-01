@@ -169,11 +169,11 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
             if isa(input_val, Number)
                 net.neuronlayers[1].i .+= input_val
             elseif isa(input_val, AbstractVector)
-                for (idx, v) in enumerate(input_val)
+                for (idx, val) in enumerate(input_val)
                     if idx > nlayers
                         break
                     end
-                    net.neuronlayers[idx].i .+= v
+                    net.neuronlayers[idx].i .+= val
                 end
             else
                 error("inputfn(t) must return either a Number or an AbstractVector")
