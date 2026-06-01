@@ -222,13 +222,17 @@ function update!(layer::NeuronLayer, dt::Float64, t::Float64)
     layer.pretraces .*= exp(-dt / layer.τ_pretrace)
     layer.posttraces .*= exp(-dt / layer.τ_posttrace)
 
-    # LIF dynamics
-    @. layer.v += (-(layer.v - layer.V_rest) + layer.R_m .* layer.i) / layer.τ_m * dt
-    
     # Refractory handling
     refmask = layer.t_ref .> 0
     layer.v[refmask] .= layer.V_reset
     @. layer.t_ref = max(0.0, layer.t_ref - dt)
+
+    # LIF dynamics
+    active = .!refmask
+    if any(active)
+        dv = @. (-(layer.v[active] - layer.V_rest) + layer.R_m[active] .* layer.i[active]) / layer.τ_m[active] * dt
+        @. layer.v[active] += dv
+    end
 
     # Spiking
     fired = layer.v .>= layer.V_thresh
