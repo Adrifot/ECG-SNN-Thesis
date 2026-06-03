@@ -4,7 +4,7 @@
 Utilities for loading and preprocessing ECG recordings,
 including bandpass filtering and delta modulation spike encoding.
 
-# Provides
+# Provides #TODO: add newly added functions
 - `delta_modulation`: Delta-modulator function.
 - `load_raw_signal`: ECG data loader function.
 - `get_filtered_signal`: Signal filtering function.
@@ -146,6 +146,42 @@ function get_spiketrain(patient, session; Δ::Float64=100.0)
     spiketrain = delta_modulation(filt_sig; Δ=Δ)
 
     return spiketrain, length(filt_sig), filt_sig
+end
+
+"""
+#TODO: docstring
+"""
+function get_R_peaks(
+            signal::AbstractVector{T}; 
+            fs::Float64=1000.0,
+            min_d::Int=200) where {T <: Real}
+
+    sig = get_filtered_signal(signal; lowcut=5, highcut=15)
+
+    diffsig = [0.0; diff(sig)]
+    squaredsig = diffsig .^ 2
+    window = round(Int, 0.15*fs)
+    window = window + (iseven(window) ? 1 : 0)
+    
+    kernel = ones(window) / window
+    smoothed = filt(kernel, [1.0], squaredsig)
+
+    thresh = mean(smoothed) + 0.5 * std(smoothed)
+    candidates = findall(smoothed .> thresh)
+
+    peaks = Int[]
+    i = 1
+    while i ≤ length(candidates)
+        start = i
+        while i < length(candidates) && candidates[i+1] - candidates[i] < min_d
+            i += 1
+        end
+        cluster = candidates[start:i]
+        _, max_idx = findmax(smoothed[cluster])
+        push!(peaks, cluster[max_idx])
+        i += 1
+    end
+    return peaks
 end
 
 end # module Signals
