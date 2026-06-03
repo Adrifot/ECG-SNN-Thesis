@@ -181,8 +181,10 @@ function get_R_peaks(
             i += 1
         end
         cluster = candidates[start:i]
-        _, max_idx = findmax(smoothed[cluster])
-        push!(peaks, cluster[max_idx])
+        left  = max(1, first(cluster) - round(Int, 0.1*fs))
+        right = min(length(sig), last(cluster) + round(Int, 0.1*fs))
+        _, idx = findmax(sig[left:right])
+        push!(peaks, left + idx - 1)
         i += 1
     end
     return peaks
