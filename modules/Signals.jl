@@ -158,7 +158,7 @@ end
 function get_R_peaks(
             signal::AbstractVector{T}; 
             fs::Float64=1000.0,
-            min_d::Int=200) where {T <: Real}
+            min_d::Int=100) where {T <: Real}
 
     sig = get_filtered_signal(signal; lowcut=5.0, highcut=15.0)
 
