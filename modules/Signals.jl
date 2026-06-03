@@ -193,7 +193,7 @@ function segment_beats(
             fs::Float64 = 1000.0, 
             pre_r::Float64 = 0.25, 
             post_r::Float64 = 0.45) where {T <: Real}
-            
+
     pre = round(Int, pre_r*fs)
     post = round(Int, post_r*fs)
     beats = Vector{Float64}[]
@@ -206,6 +206,16 @@ function segment_beats(
         end
     end
     return beats
+end
+
+"""
+# TODO: docstring
+"""
+function normalize_beat(beat::Vector{Float64})
+    low, high = minimum(beat), maximum(beat)
+    r = high - low
+    r < eps() && return zeros(length(beat))
+    return @. (beat - low) / r
 end
 
 end # module Signals
