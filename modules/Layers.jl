@@ -170,10 +170,11 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
                 net.neuronlayers[1].i .+= input_val
             elseif isa(input_val, AbstractVector)
                 for (idx, val) in enumerate(input_val)
-                    if idx > nlayers
-                        break
+                    if idx > nlayers break end
+                    layer = net.neuronlayers[idx]
+                    if (!layer.isreverse && val > 0) || (layer.isreverse && val < 0)
+                        layer.i .+= abs(val)
                     end
-                    net.neuronlayers[idx].i .+= val
                 end
             else
                 error("inputfn(t) must return either a Number or an AbstractVector")
@@ -275,6 +276,7 @@ function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray, post_
 
     # Apply weights
     w_impact = syn.isinhibitory ? -syn.ws : syn.ws
+    if post.isreverse w_impact *= -1 end
     post.i .+= sum(w_impact[:, fired], dims=2)[:]
 
     # STDP LTD
