@@ -40,7 +40,7 @@ The function generates a spike-train by emitting:
 """
 function delta_modulation(
             signal::AbstractVector{T}; 
-            Δ::Float64=100.0
+            Δ::Float64=0.1
         ) where {T <: Real}
     n = length(signal)
     last_spike_lvl = signal[1]
