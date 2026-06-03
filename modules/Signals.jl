@@ -82,9 +82,7 @@ A `Vector{Float64}` containing samples from ECG channel 2.
 function load_raw_signal(patient, session)
     path = "./ecg-db/patient$(patient)/$(session).dat"
 
-    if !isfile(path)
-        error("File not found: $(path)")
-    end
+    !isfile(path) && error("File not found: $(path)")
 
     raw_data = reinterpret(Int16, read(path))
     n_channels = 16
