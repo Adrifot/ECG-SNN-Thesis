@@ -65,7 +65,7 @@ Reduces weight based on post-synaptic trace (LTD).
 """
 function prespike!(syn::Synapse, posttrace::Float64)
     # LTD: weight decreases if post-synaptic neuron fired recently
-    syn.w -= syn.learningrate * posttrace * (syn.w / syn.wmax)
+    syn.w -= syn.learningrate * 1.1 * posttrace * (syn.w / syn.wmax) # LTD a bit stronger than LTP
     syn.w = max(0.0, syn.w)
 end
 
