@@ -132,7 +132,8 @@ Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrai
 # Arguments
 - `patient`: Patient identifier.
 - `session`: Session identifier.
-- `Δ::Float64=100.0`: Threshold parameter used in delta modulation.
+- `Δ::Float64=0.1`: Threshold parameter used in delta modulation.
+- `fs::Float64=1000.0`: Signal sampling frequency.
 
 # Returns
 A tuple containing:
@@ -140,10 +141,13 @@ A tuple containing:
 2. `signal_length::Integer`: Length of the filtered signal.
 3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
 """
-function get_spiketrain(patient, session; Δ::Float64=100.0)
+function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0)
     raw_sig = load_raw_signal(patient, session)
     filt_sig = get_filtered_signal(raw_sig)
-    spiketrain = delta_modulation(filt_sig; Δ=Δ)
+    peaks = get_R_peaks(filt_sig; fs=fs)
+    beats = segment_beats(filt_sig, peaks; fs=fs)
+    beats_norm = normalize_beat.(beats)
+    spiketrain = vcat(delta_modulation.(beats_norm; Δ=Δ)...)
 
     return spiketrain, length(filt_sig), filt_sig
 end
