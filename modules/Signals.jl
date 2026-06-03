@@ -184,4 +184,28 @@ function get_R_peaks(
     return peaks
 end
 
+"""
+# TODO: docstring
+"""
+function segment_beats(
+            signal::AbstractVector{T}, 
+            peaks::Vector{Int};
+            fs::Float64 = 1000.0, 
+            pre_r::Float64 = 0.25, 
+            post_r::Float64 = 0.45) where {T <: Real}
+            
+    pre = round(Int, pre_r*fs)
+    post = round(Int, post_r*fs)
+    beats = Vector{Float64}[]
+    
+    for r in peaks
+        startidx = r - pre
+        endidx = r + post
+        if startidx ≥ 1 && endidx ≤ length(signal)
+            push!(beats, signal[startidx:endidx])
+        end
+    end
+    return beats
+end
+
 end # module Signals
