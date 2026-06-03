@@ -160,7 +160,7 @@ function get_R_peaks(
             fs::Float64=1000.0,
             min_d::Int=200) where {T <: Real}
 
-    sig = get_filtered_signal(signal; lowcut=5, highcut=15)
+    sig = get_filtered_signal(signal; lowcut=5.0, highcut=15.0)
 
     diffsig = [0.0; diff(sig)]
     squaredsig = diffsig .^ 2
