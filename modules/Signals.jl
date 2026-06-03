@@ -13,7 +13,7 @@ including bandpass filtering and delta modulation spike encoding.
 """
 module Signals
 
-export load_raw_signal, get_filtered_signal, get_spiketrain, delta_modulation
+export get_spiketrain
 
 include("Neurons.jl")
 using .Neurons
