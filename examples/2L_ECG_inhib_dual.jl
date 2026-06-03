@@ -16,7 +16,7 @@ plotly()
 PATIENT = "001"
 SESSION = "s0014lre"
 
-Δ = 100.0
+Δ = 0.1
 fs = 1000.0
 N = 50
 
@@ -65,7 +65,7 @@ up_pulses   = zeros(nsteps)
 down_pulses = zeros(nsteps)
 
 for spike in spiketrain
-    step = Int(floor(((spike.time - 1.0) / fs) / dt)) + 1
+    step = Int(floor(spike.time)) + 1
     if 1 <= step <= nsteps
         if spike.polarity
             up_pulses[step]   += pulse_amp   
