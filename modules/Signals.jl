@@ -4,7 +4,7 @@
 Utilities for loading and preprocessing ECG recordings,
 including bandpass filtering and delta modulation spike encoding.
 
-# Provides
+# Provides #TODO: add newly added functions
 - `delta_modulation`: Delta-modulator function.
 - `load_raw_signal`: ECG data loader function.
 - `get_filtered_signal`: Signal filtering function.
@@ -13,7 +13,7 @@ including bandpass filtering and delta modulation spike encoding.
 """
 module Signals
 
-export load_raw_signal, get_filtered_signal, get_spiketrain, delta_modulation
+export get_spiketrain
 
 include("Neurons.jl")
 using .Neurons
@@ -132,7 +132,8 @@ Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrai
 # Arguments
 - `patient`: Patient identifier.
 - `session`: Session identifier.
-- `Δ::Float64=100.0`: Threshold parameter used in delta modulation.
+- `Δ::Float64=0.1`: Threshold parameter used in delta modulation.
+- `fs::Float64=1000.0`: Signal sampling frequency.
 
 # Returns
 A tuple containing:
@@ -140,12 +141,85 @@ A tuple containing:
 2. `signal_length::Integer`: Length of the filtered signal.
 3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
 """
-function get_spiketrain(patient, session; Δ::Float64=100.0)
+function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0)
     raw_sig = load_raw_signal(patient, session)
     filt_sig = get_filtered_signal(raw_sig)
-    spiketrain = delta_modulation(filt_sig; Δ=Δ)
+    peaks = get_R_peaks(filt_sig; fs=fs)
+    beats = segment_beats(filt_sig, peaks; fs=fs)
+    beats_norm = normalize_beat.(beats)
+    spiketrain = vcat(delta_modulation.(beats_norm; Δ=Δ)...)
 
     return spiketrain, length(filt_sig), filt_sig
+end
+
+"""
+#TODO: docstring
+"""
+function get_R_peaks(
+            signal::AbstractVector{T}; 
+            fs::Float64=1000.0,
+            min_d::Int=200) where {T <: Real}
+
+    sig = get_filtered_signal(signal; lowcut=5, highcut=15)
+
+    diffsig = [0.0; diff(sig)]
+    squaredsig = diffsig .^ 2
+    window = round(Int, 0.15*fs)
+    window = window + (iseven(window) ? 1 : 0)
+    
+    kernel = ones(window) / window
+    smoothed = filt(kernel, [1.0], squaredsig)
+
+    thresh = mean(smoothed) + 0.5 * std(smoothed)
+    candidates = findall(smoothed .> thresh)
+
+    peaks = Int[]
+    i = 1
+    while i ≤ length(candidates)
+        start = i
+        while i < length(candidates) && candidates[i+1] - candidates[i] < min_d
+            i += 1
+        end
+        cluster = candidates[start:i]
+        _, max_idx = findmax(smoothed[cluster])
+        push!(peaks, cluster[max_idx])
+        i += 1
+    end
+    return peaks
+end
+
+"""
+# TODO: docstring
+"""
+function segment_beats(
+            signal::AbstractVector{T}, 
+            peaks::Vector{Int};
+            fs::Float64 = 1000.0, 
+            pre_r::Float64 = 0.25, 
+            post_r::Float64 = 0.45) where {T <: Real}
+
+    pre = round(Int, pre_r*fs)
+    post = round(Int, post_r*fs)
+    beats = Vector{Float64}[]
+    
+    for r in peaks
+        startidx = r - pre
+        endidx = r + post
+        if startidx ≥ 1 && endidx ≤ length(signal)
+            push!(beats, signal[startidx:endidx])
+        end
+    end
+    return beats
+end
+
+"""
+# TODO: docstring
+"""
+function normalize_beat(beat::Vector{Float64})
+    low, high = minimum(beat), maximum(beat)
+    r = high - low
+    r < eps() && return zeros(length(beat))
+    return @. (beat - low) / r
 end
 
 end # module Signals
