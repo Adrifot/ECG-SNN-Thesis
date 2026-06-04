@@ -81,15 +81,28 @@ A `Vector{Float64}` containing samples from ECG channel 2.
 - `ErrorException` if the file does not exist.
 """
 function load_raw_signal(patient, session)
-    path = "./ecg-db/patient$(patient)/$(session).dat"
+    dat_path = "./ecg-db/patient$(patient)/$(session).dat"
+    hea_path = "./ecg-db/patient$(patient)/$(session).hea"
 
-    !isfile(path) && error("File not found: $(path)")
+    !isfile(dat_path) && error("File not found: $(dat_path)")
+    !isfile(hea_path) && error("Header not found: $(hea_path)")
 
-    raw_data = reinterpret(Int16, read(path))
-    n_channels = 16
+    first_line = readline(hea_path)
+    parts = split(first_line)
+    n_channels = parse(Int, parts[2])
+    n_samples = parse(Int, parts[4])
+
+    raw_data = reinterpret(Int16, read(dat_path))
+    expected = n_channels * n_samples
+
+    if length(raw_data) != expected
+        usable = (length(raw_data) ÷ n_channels) * n_channels
+        raw_data = raw_data[1:usable]
+    end
+
     data_matrix = reshape(raw_data, n_channels, :)
-
-    return Float64.(data_matrix[2, :])
+    ch = min(2, n_channels)
+    return Float64.(data_matrix[ch, :])
 end
 
 
