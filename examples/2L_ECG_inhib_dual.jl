@@ -10,15 +10,18 @@ using .Layers: update!, propagate!, update_post!
 
 using Plots
 using Statistics
+using Random
+
+Random.seed!(42)
 
 plotly()
 
-PATIENT = "001"
-SESSION = "s0014lre"
+PATIENT = "105"
+SESSION = "s0303lre"
 
-Δ = 0.1
+Δ = 0.075
 fs = 1000.0
-N = 10
+N = 25
 
 up_template = Neuron("up_input"; R_m=0.5, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
                 τ_pretrace=20.0, τ_posttrace=10.0)
@@ -29,7 +32,7 @@ down_template = Neuron("down_input"; R_m=0.5, τ_m=2.0, τ_s=60.0, τ_ref=4.0,
 out_template = Neuron("output"; R_m=3.0, τ_m=6.0, τ_s=6.0, τ_ref=2.0,
                 τ_pretrace=20.0, τ_posttrace=10.0)
 
-exc_syn_template = Synapse(1, 2; learningrate=0.08, wmax=1.0)
+exc_syn_template = Synapse(1, 2; learningrate=0.15, wmax=1.0)
 
 inhib_template = Synapse(1, 1; learningrate=0.0, wmax=1.0, isinhibitory=true)
 
@@ -44,11 +47,11 @@ down_to_out = SynapseLayer(down_layer, out_layer, exc_syn_template;
     dist=NormalDist(0.5, 0.2), density=0.75, pre_idx=2, post_idx=3)
 
 inhib_up = SynapseLayer(up_layer,   up_layer,   inhib_template;
-    dist=UniformDist(0.25, 0.5), density=0.4, pre_idx=1, post_idx=1)
+    dist=UniformDist(0.1, 0.2), density=0.25, pre_idx=1, post_idx=1)
 inhib_down = SynapseLayer(down_layer, down_layer, inhib_template;
-    dist=UniformDist(0.25, 0.5), density=0.4, pre_idx=2, post_idx=2)
+    dist=UniformDist(0.1, 0.2), density=0.25, pre_idx=2, post_idx=2)
 inhib_out = SynapseLayer(out_layer,  out_layer,  inhib_template;
-    dist=UniformDist(0.25, 0.5), density=0.4, pre_idx=3, post_idx=3)
+    dist=UniformDist(0.1, 0.2), density=0.25, pre_idx=3, post_idx=3)
 
 net = LayeredNetwork(
     [up_layer, down_layer, out_layer],
@@ -196,24 +199,23 @@ p1 = heatmap(net.synapselayers[1].ws, clims=(0.0, 1.0), title="up→out weights 
 p2 = heatmap(net.synapselayers[2].ws, clims=(0.0, 1.0), title="down→out weights (final)")
 display(plot(p1, p2, layout=(1, 2), size=(1200, 500)))
 
+println("Patient: $PATIENT, Session: $SESSION")
+println("Pathway bias (up-down): $(round(mean(net.synapselayers[1].ws) - mean(net.synapselayers[2].ws), digits=4))")
+println("Dead synapses up:   $(count(iszero, net.synapselayers[1].ws) / length(net.synapselayers[1].ws))")
+println("Dead synapses down: $(count(iszero, net.synapselayers[2].ws) / length(net.synapselayers[2].ws))")
+
 println("Up spikes total:   ", sum(up_pulses .> 0))
 println("Down spikes total: ", sum(down_pulses .< 0)) 
 println("Up pulse amplitude sum:   ", sum(up_pulses))
 println("Down pulse amplitude sum: ", sum(abs.(down_pulses)))
 
-# After runlayers!, compare t_lastin vs t_lastout across layers
 up   = net.neuronlayers[1]
 out  = net.neuronlayers[3]
 
 println("Up layer  — mean last spike time: ", mean(up.t_lastout[up.t_lastout .> 0]))
 println("Out layer — mean last spike time: ", mean(out.t_lastout[out.t_lastout .> 0]))
 
-if !isempty(timing_log)
-    lags = [x.lag for x in timing_log]
-    positive_lags = count(>(0), lags)
-    negative_lags = count(<(0), lags)
-    println("LTP-favourable steps: $positive_lags  (post after pre)")
-    println("LTD-favourable steps: $negative_lags  (post before pre)")
-    println("Mean lag (post - pre): $(round(mean(lags), digits=4))s")
-    println("  positive → LTP dominant, negative → LTD dominant")
-end
+total_spikes = sum(up_pulses .> 0)+ sum(down_pulses .< 0)
+expected_bias = total_spikes / (nsteps * N)  
+println("Total spikes: $total_spikes")
+println("Naive spike-count prediction: $(expected_bias)")
