@@ -10,6 +10,10 @@ using Random
 using ProgressMeter
 using Statistics, LinearAlgebra
 
+# Search consts 
+const SEARCH_ITERATIONS = 50
+const FOCUSED_ITERATIONS = 5
+
 # ----- Getting all the patients -----
 db_root = "./ecg-db"
 all_records = build_registry(db_root)
@@ -249,4 +253,24 @@ function printtop(results, n=5)
         println("   inhib_density=$(round(hp.inhib_density, digits=3))  inhib_strength=$(round(hp.inhib_strength, digits=3))")
     end
 end
+
+# ----- Random Search -----
+rng = MersenneTwister(67)
+random_params = [sample_params_random(rng) for _ in 1:SEARCH_ITERATIONS]
+random_results = run_search(random_params, "1. Random Search")
+printtop(random_results)
+
+# ----- Focused Search -----
+topk = 3
+rng = MersenneTwister(69)
+focused_params = HyperParams[]
+
+for i in 1:topk
+    hp = random_results[i][2]
+    append!(
+        focused_params,
+        [sample_params_focused(rng, hp; frac=0.15) for _ in 1:FOCUSED_ITERATIONS]
+    )
+end
+focused_results = run_search(focused_params, "2. Focused Search")
 
