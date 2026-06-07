@@ -81,15 +81,28 @@ A `Vector{Float64}` containing samples from ECG channel 2.
 - `ErrorException` if the file does not exist.
 """
 function load_raw_signal(patient, session)
-    path = "./ecg-db/patient$(patient)/$(session).dat"
+    dat_path = "./ecg-db/patient$(patient)/$(session).dat"
+    hea_path = "./ecg-db/patient$(patient)/$(session).hea"
 
-    !isfile(path) && error("File not found: $(path)")
+    !isfile(dat_path) && error("File not found: $(dat_path)")
+    !isfile(hea_path) && error("Header not found: $(hea_path)")
 
-    raw_data = reinterpret(Int16, read(path))
-    n_channels = 16
+    first_line = readline(hea_path)
+    parts = split(first_line)
+    n_channels = parse(Int, parts[2])
+    n_samples = parse(Int, parts[4])
+
+    raw_data = reinterpret(Int16, read(dat_path))
+    expected = n_channels * n_samples
+
+    if length(raw_data) != expected
+        usable = (length(raw_data) ÷ n_channels) * n_channels
+        raw_data = raw_data[1:usable]
+    end
+
     data_matrix = reshape(raw_data, n_channels, :)
-
-    return Float64.(data_matrix[2, :])
+    ch = min(2, n_channels)
+    return Float64.(data_matrix[ch, :])
 end
 
 
@@ -120,34 +133,24 @@ end
 
 
 """
-    get_spiketrain(patient, session; Δ=100)
-        -> (spiketrain::Vector{Spike}, 
-            signal_length::Integer, 
-            filtered_signal::AbstractVector{T<:Real})
-            
-
-Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrain.
-
-# Arguments
-- `patient`: Patient identifier.
-- `session`: Session identifier.
-- `Δ::Float64=0.1`: Threshold parameter used in delta modulation.
-- `fs::Float64=1000.0`: Signal sampling frequency.
-
-# Returns
-A tuple containing:
-1. `spiketrain::Vector{Spike}`: Encoded spike representation.
-2. `signal_length::Integer`: Length of the filtered signal.
-3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
+# TODO: docstring
 """
-function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0)
+function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, gap::Float64=100.0)
     raw_sig = load_raw_signal(patient, session)
     filt_sig = get_filtered_signal(raw_sig)
     peaks = get_R_peaks(filt_sig; fs=fs)
     beats = segment_beats(filt_sig, peaks; fs=fs)
     beats_norm = normalize_beat.(beats)
-    spiketrain = vcat(delta_modulation.(beats_norm; Δ=Δ)...)
 
+    spiketrain = Spike[]
+    offset = 0.0
+    for beat in beats_norm
+        beat_spikes = delta_modulation(beat; Δ=Δ)
+        for s in beat_spikes
+            push!(spiketrain, Spike(s.time + offset, s.polarity, s.src_name))
+        end
+        offset += length(beat) + gap
+    end
     return spiketrain, length(filt_sig), filt_sig
 end
 
