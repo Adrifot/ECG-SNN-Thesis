@@ -36,7 +36,7 @@ struct HyperParams
     Δ::Float64
     pulse_amp::Float64
     learningrate::Float64
-    τ_s::Float64
+    τ_s_input::Float64
     τ_pretrace::Float64
     τ_posttrace::Float64
     R_m_input::Float64
@@ -62,7 +62,7 @@ function sample_params_random(rng)
         getrnd(0.01, 0.25, rng), # Δ
         getrnd(10.0, 300.0, rng), # pulse_amp
         getrnd(0.05, 0.25, rng), # learningrate
-        getrnd(1.0, 50.0, rng), # τ_s
+        getrnd(1.0, 50.0, rng), # τ_s_input
         getrnd(10.0, 100.0, rng), # τ_pretrace
         getrnd(10.0, 100.0, rng), # τ_posttrace
         getrnd(0.1, 10.0, rng), # R_m_input
@@ -91,7 +91,7 @@ function sample_params_focused(rng, best::HyperParams; frac=0.15)
         perturb(best.Δ, 0.01, 0.25),
         perturb(best.pulse_amp, 10.0, 300.0),
         perturb(best.learningrate, 0.05, 0.25),
-        perturb(best.τ_s, 1.0, 50.0),
+        perturb(best.τ_s_input, 1.0, 50.0),
         perturb(best.τ_pretrace, 10.0, 100.0),
         perturb(best.τ_posttrace, 10.0, 100.0),
         perturb(best.R_m_input, 0.1, 10.0),
