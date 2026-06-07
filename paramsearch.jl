@@ -153,3 +153,66 @@ function build_network(hp::HyperParams)
         [uptout, downtout, inhibup, inhibdown, inhibout]
     )
 end 
+
+function runone(rec, hp::HyperParams)
+    spiketrain, siglen, _ = get_spiketrain(rec.patient, rec.session, Δ=hp.Δ, fs=1000.0, gap=100.0)
+    tsim_actual = min(tsim, siglen / 1000.0)
+    nstepts = Int(round(tsim_actual / dt))
+
+    uppulses = zeros(nsteps)
+    downpulses = zeros(nsteps)
+
+    for spike in spiketrain
+        step = Int(floor(spike.time))
+        1 ≤ step ≤ nsteps || continue
+        spike.polarity ? (uppulses[step] += hp.pulse_amp) : (downpulses[step] -= hp.pulse_amp)
+    end
+
+    input_fn = t -> begin
+        idx = clamp(Int(floor(t/dt)) + 1, 1, nsteps)
+        [uppulses[idx], downpulses[idx], 0.0]
+    end
+
+    net = build_network(hp)
+    runlayers!(net, dt, tsim_actual; inputfn=input_fn)
+
+    w_up = net.synapselayers[1].ws
+    w_down = net.synapselayers[2].ws
+    return (mean(w_up) + mean(w_down)) / 2
+end
+
+function cohens_d(a, b)
+    pooled = sqrt((std(a)^2 + std(b)^2) / 2)
+    pooled < 1e-10 && return 0.0
+    return abs(mean(a) - mean(b)) / pooled
+end
+
+function evaluate(hp::HyperParams)
+    t_start = time()
+    weights = Dict(:healthy => Float64[], :infarction => Float64[])
+    errors = Int[0, 0] #[healthy, infarction]
+
+    for rec in subset
+        try
+            w = wunone(rec, hp)
+            push!(weights[rec.label], 2)
+        catch e
+            if rec.label == :healthy 
+                errors[1] += 1
+            else 
+                errors[2] += 1
+            end
+            @warn "Error on $(rec.patient): $e"
+        end
+    end
+
+    n_h = length(weights[:healthy])
+    n_i = length(weights[:infarction])
+    d = (n_h<5 || n_i < 5) ? 0.0 : cohens_d(weights[:healthy], weights[:infarction])
+
+    return (d=d, n_healthy=n_h, n_infarction=n_i, errors_h=errors[1], errors_i=errors[2],
+            runtime=round(time() - t_start, digits=1))
+end
+
+
+
