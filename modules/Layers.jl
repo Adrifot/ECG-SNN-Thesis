@@ -146,12 +146,13 @@ Simulate the layered network for the given duration.
 - `duration::Float64`: Total simulation duration.
 - `t0::Float64=0.0`: Optional start time.
 - `inputfn`: Optional input function `inputfn(t) -> Float64` applied to each neuron in the input layer at each step.
-- `callback`: Optional callback `callback(t, net, step)` called after each time step.
+ - `callback`: Optional callback `callback(t, net, step)` called after each time step.
+ - `freeze_at::Float64=Inf`: Time after which STDP is disabled (weights frozen, only current propagation).
 
 # Returns
 - `LayeredNetwork`: The updated network state.
 """
-function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing, callback=nothing)
+function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Float64=0.0, inputfn=nothing, callback=nothing, freeze_at::Float64=Inf)
     nsteps = Int(round(duration / dt))
     nlayers = length(net.neuronlayers)
 
@@ -162,6 +163,7 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
 
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
+        freeze = t >= freeze_at
 
         # Apply external input to the input layer(s)
         if inputfn !== nothing && nlayers > 0
@@ -198,11 +200,11 @@ function runlayers!(net::LayeredNetwork, dt::Float64, duration::Float64; t0::Flo
             prefired = fired[syn.pre_idx]
 
             if any(prefired)
-                propagate!(postlayer, syn, prefired, old_posttraces[syn.post_idx])
+                propagate!(postlayer, syn, prefired, old_posttraces[syn.post_idx]; freeze=freeze)
             end
 
             if any(fired[syn.post_idx])
-                update_post!(syn, fired[syn.post_idx], old_pretraces[syn.pre_idx])
+                update_post!(syn, fired[syn.post_idx], old_pretraces[syn.pre_idx]; freeze=freeze)
             end
         end
 
@@ -269,15 +271,20 @@ Propagate pre-synaptic spikes to the post-synaptic layer and apply STDP LTD.
 - `post::NeuronLayer`: Post-synaptic neuron layer.
 - `syn::SynapseLayer`: Synapses connecting pre to post.
 - `fired::BitArray`: Boolean vector indicating which pre-synaptic neurons fired.
-- `post_posttraces::Vector{Float64}`: Post-synaptic spike traces from the *previous* timestep (for STDP causality).
+ - `post_posttraces::Vector{Float64}`: Post-synaptic spike traces from the *previous* timestep (for STDP causality).
+ - `freeze::Bool=false`: If true, skip STDP weight update (only propagate current).
 """
-function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray, post_posttraces::Vector{Float64})
+function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray, post_posttraces::Vector{Float64}; freeze=false)
     any(fired) || return
 
     # Apply weights
     w_impact = syn.isinhibitory ? -syn.ws : syn.ws
     if post.isreverse w_impact *= -1 end
     post.i .+= sum(w_impact[:, fired], dims=2)[:]
+
+    if freeze
+        return
+    end
 
     # STDP LTD
     ltd = syn.learningrate .* (post_posttraces * fired') .* (syn.ws ./ syn.wmax)
@@ -292,10 +299,15 @@ Update synaptic weights based on post-synaptic spikes and pre-synaptic traces (S
 # Arguments
 - `syn::SynapseLayer`: Synapses to update.
 - `postfired::BitArray`: Boolean vector indicating which post-synaptic neurons fired.
-- `pre_pretraces::Vector{Float64}`: Pre-synaptic spike traces from the *previous* timestep (for STDP causality).
+ - `pre_pretraces::Vector{Float64}`: Pre-synaptic spike traces from the *previous* timestep (for STDP causality).
+ - `freeze::Bool=false`: If true, skip STDP weight update.
 """
-function update_post!(syn::SynapseLayer, postfired::BitArray, pre_pretraces::Vector{Float64})
+function update_post!(syn::SynapseLayer, postfired::BitArray, pre_pretraces::Vector{Float64}; freeze=false)
     any(postfired) || return
+
+    if freeze
+        return
+    end
 
     # STDP LTP
     ltp = syn.learningrate .* (postfired * pre_pretraces') .* (1.0 .- syn.ws ./ syn.wmax)
