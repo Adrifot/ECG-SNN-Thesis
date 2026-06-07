@@ -82,7 +82,7 @@ struct NeuronLayer
             zeros(N),
             zeros(N),
             zeros(N),
-            zeros(N)
+            fill(-Inf, N)
         )
     end
 end

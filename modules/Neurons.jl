@@ -113,7 +113,7 @@ mutable struct Neuron
         τ_ref >= 0 || throw(ArgumentError("τ_ref cannot be negative (got $τ_ref)"))
         (τ_pretrace >= 0 && τ_posttrace >= 0) || throw(ArgumentError("Trace constants cannot be negative"))
         
-        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, τ_pretrace, τ_posttrace, isreverse, 0.0, V_rest, 0.0, 0.0, 0.0, 0.0, 0.0)
+        return new(name, V_rest, V_thresh, V_reset, R_m, τ_m, τ_s, τ_ref, τ_pretrace, τ_posttrace, isreverse, 0.0, V_rest, 0.0, 0.0, -Inf, 0.0, 0.0)
     end
 end
 
