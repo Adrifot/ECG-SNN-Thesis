@@ -9,6 +9,7 @@ using .Registry
 using Random
 using ProgressMeter
 using Statistics, LinearAlgebra
+using StatsBase: sample
 
 # Search consts 
 const SEARCH_ITERATIONS = 50
@@ -53,7 +54,7 @@ struct HyperParams
     N::Int
     density::Float64
     inhib_density::Float64
-    inhib_strnegth::Float64
+    inhib_strength::Float64
 end
 
 # ----- Full Random Search -----
@@ -144,7 +145,7 @@ function build_network(hp::HyperParams)
                 pre_idx=1, post_idx=3)
     downtout = SynapseLayer(uplayer, outlayer, syn_template; 
                 dist=NormalDist(0.5, 0.2), density=hp.density,
-                pre_idx=1, post_idx=3)
+                pre_idx=2, post_idx=3)
     inhibup = SynapseLayer(uplayer, uplayer, inhib_template;
                 dist=UniformDist(0.05, hp.inhib_strength), density=hp.inhib_density, pre_idx=1, post_idx=1)
     inhibdown = SynapseLayer(downlayer, downlayer, inhib_template;
@@ -161,7 +162,7 @@ end
 function runone(rec, hp::HyperParams)
     spiketrain, siglen, _ = get_spiketrain(rec.patient, rec.session, Δ=hp.Δ, fs=1000.0, gap=100.0)
     tsim_actual = min(tsim, siglen / 1000.0)
-    nstepts = Int(round(tsim_actual / dt))
+    nsteps = Int(round(tsim_actual / dt))
 
     uppulses = zeros(nsteps)
     downpulses = zeros(nsteps)
@@ -198,8 +199,8 @@ function evaluate(hp::HyperParams)
 
     for rec in subset
         try
-            w = wunone(rec, hp)
-            push!(weights[rec.label], 2)
+            w = runone(rec, hp)
+            push!(weights[rec.label], w)
         catch e
             if rec.label == :healthy 
                 errors[1] += 1
@@ -240,9 +241,9 @@ function printtop(results, n=5)
     for (i, (d, hp)) in enumerate(results[1:min(n, length(results))])
         println("\nRank $i --- Cohen's d = $(round(d, digits=3))")
         println("   Δ=$(round(hp.Δ, digits=4))  pulse_amp=$(round(hp.pulse_amp, digits=1))")
-        println("   ltp_rate=$(round(hp.ltp_rate, digits=4))")
+        println("   learningrate=$(round(hp.learningrate, digits=4))")
         println(
-            "   τ_s=$(round(hp.τ_s,digits=2))" *
+            "   τ_s_input=$(round(hp.τ_s_input,digits=2))" *
             "   τ_pretrace=$(round(hp.τ_pretrace,digits=2))" *
             "   τ_posttrace=$(round(hp.τ_posttrace,digits=2))"
         )
@@ -257,7 +258,7 @@ end
 # ----- Random Search -----
 rng = MersenneTwister(67)
 random_params = [sample_params_random(rng) for _ in 1:SEARCH_ITERATIONS]
-random_results = run_search(random_params, "1. Random Search")
+random_results = runsearch(random_params, "1. Random Search")
 printtop(random_results)
 
 # ----- Focused Search -----
@@ -272,5 +273,8 @@ for i in 1:topk
         [sample_params_focused(rng, hp; frac=0.15) for _ in 1:FOCUSED_ITERATIONS]
     )
 end
-focused_results = run_search(focused_params, "2. Focused Search")
+focused_results = runsearch(focused_params, "2. Focused Search")
 
+all_results = sort!(vcat(random_results, focused_results), by=first, rev=true)
+println("\n----- Final top 5 -----")
+printtop(all_results)
