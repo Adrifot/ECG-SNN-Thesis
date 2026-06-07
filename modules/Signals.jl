@@ -133,34 +133,24 @@ end
 
 
 """
-    get_spiketrain(patient, session; Δ=100)
-        -> (spiketrain::Vector{Spike}, 
-            signal_length::Integer, 
-            filtered_signal::AbstractVector{T<:Real})
-            
-
-Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrain.
-
-# Arguments
-- `patient`: Patient identifier.
-- `session`: Session identifier.
-- `Δ::Float64=0.1`: Threshold parameter used in delta modulation.
-- `fs::Float64=1000.0`: Signal sampling frequency.
-
-# Returns
-A tuple containing:
-1. `spiketrain::Vector{Spike}`: Encoded spike representation.
-2. `signal_length::Integer`: Length of the filtered signal.
-3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
+# TODO: docstring
 """
-function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0)
+function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, gap::Float64=100.0)
     raw_sig = load_raw_signal(patient, session)
     filt_sig = get_filtered_signal(raw_sig)
     peaks = get_R_peaks(filt_sig; fs=fs)
     beats = segment_beats(filt_sig, peaks; fs=fs)
     beats_norm = normalize_beat.(beats)
-    spiketrain = vcat(delta_modulation.(beats_norm; Δ=Δ)...)
 
+    spiketrain = Spike[]
+    offset = 0.0
+    for beat in beats_norm
+        beat_spikes = delta_modulation(beat; Δ=Δ)
+        for s in beat_spikes
+            push!(spiketrain, Spike(s.time + offset, s.polarity, s.src_name))
+        end
+        offset += length(beat) + gap
+    end
     return spiketrain, length(filt_sig), filt_sig
 end
 
