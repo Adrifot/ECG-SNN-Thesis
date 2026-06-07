@@ -107,3 +107,49 @@ function sample_params_focused(rng, best::HyperParams; frac=0.15)
         perturb(best.inhib_strength, 0.1, 0.9)
     )
 end
+
+# ----- Network -----
+const dt = 0.001
+const tsim = 25.0
+const SEED = 42
+
+function build_network(hp::HyperParams)
+    Random.seed!(SEED)
+
+    # Neuron templates
+    up_template = Neuron("up_in"; R_m=hp.R_m_input, τ_m=hp.τ_m_input, τ_s=hp.τ_s_input, 
+                    τ_ref=hp.τ_ref_input, τ_pretrace=hp.τ_pretrace, τ_posttrace=hp.τ_posttrace)
+    down_template = Neuron("down_in"; R_m=hp.R_m_input, τ_m=hp.τ_m_input, τ_s=hp.τ_s_input, 
+                    τ_ref=hp.τ_ref_input, τ_pretrace=hp.τ_pretrace, τ_posttrace=hp.τ_posttrace,
+                    isreverse=true)
+    out_template = Neuron("out"; R_m=hp.R_m_output, τ_m=hp.τ_m_output, τ_s=hp.τ_s_output,
+                    τ_ref=hp.τ_ref_output, τ_pretrace=hp.τ_pretrace, τ_posttrace=hp.τ_posttrace)
+
+    # Synapse templates
+    syn_template = Synapse(1, 2; learningrate=hp.learningrate, wmax=1.0)
+    inhib_template = Synapse(1, 1; learningrate=0.0, wmax=1.0, isinhibitory=true)
+
+    # Neuron layers
+    uplayer = NeuronLayer(hp.N, up_template; name="up_in", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+    downlayer = NeuronLayer(hp.N, down_template; name="down_in", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+    outlayer = NeuronLayer(hp.N, out_template; name="out", V_thresh_dev=0.05, R_m_dev=0.1, τ_m_dev=0.15)
+
+    # Synaptic layers
+    uptout = SynapseLayer(uplayer, outlayer, syn_template; 
+                dist=NormalDist(0.5, 0.2), density=hp.density,
+                pre_idx=1, post_idx=3)
+    downtout = SynapseLayer(uplayer, outlayer, syn_template; 
+                dist=NormalDist(0.5, 0.2), density=hp.density,
+                pre_idx=1, post_idx=3)
+    inhibup = SynapseLayer(uplayer, uplayer, inhib_template;
+                dist=UniformDist(0.05, hp.inhib_strength), density=hp.inhib_density, pre_idx=1, post_idx=1)
+    inhibdown = SynapseLayer(downlayer, downlayer, inhib_template;
+                dist=UniformDist(0.05, hp.inhib_strength), density=hp.inhib_density, pre_idx=2, post_idx=2)
+    inhibout = SynapseLayer(outlayer, outlayer, inhib_template;
+                dist=UniformDist(0.05, hp.inhib_strength), density=hp.inhib_density, pre_idx=3, post_idx=3)
+
+    return LayeredNetwork(
+        [uplayer, downlayer, outlayer],
+        [uptout, downtout, inhibup, inhibdown, inhibout]
+    )
+end 
