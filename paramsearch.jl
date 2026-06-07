@@ -214,5 +214,39 @@ function evaluate(hp::HyperParams)
             runtime=round(time() - t_start, digits=1))
 end
 
+function runsearch(params, label)
+    n = length(params)
+    res = Vector{Tuple{Float64, HyperParams}}(undef, n)
+    best_d = Threads.Atomic{Float64}(0.0)
+    p = Progress(n; desc="$label...", showspeed=true)
+  
+    Threads.@threads for i in 1:n
+        ev = evaluate(params[i])
+        res[i] = (ev.d, params[i])
+        Threads.atomic_max!(best_d, ev.d)
+        next!(p; showvalues=[(:best_cohens_d, round(best_d[], digits=3))])
+    end
 
+    sort!(res, by=first, rev=true)
+    return res
+end
+
+function printtop(results, n=5)
+    println("\n----- Top $n parameter sets -----")
+    for (i, (d, hp)) in enumerate(results[1:min(n, length(results))])
+        println("\nRank $i --- Cohen's d = $(round(d, digits=3))")
+        println("   Δ=$(round(hp.Δ, digits=4))  pulse_amp=$(round(hp.pulse_amp, digits=1))")
+        println("   ltp_rate=$(round(hp.ltp_rate, digits=4))")
+        println(
+            "   τ_s=$(round(hp.τ_s,digits=2))" *
+            "   τ_pretrace=$(round(hp.τ_pretrace,digits=2))" *
+            "   τ_posttrace=$(round(hp.τ_posttrace,digits=2))"
+        )
+        println("   R_m_input=$(round(hp.R_m_input, digits=3))  R_m_output=$(round(hp.R_m_output, digits=3))")
+        println("   τ_m_input=$(round(hp.τ_m_input, digits=3))  τ_m_output=$(round(hp.τ_m_output, digits=3))  τ_s_output=$(round(hp.τ_s_output, digits=3))")
+        println("   τ_ref_input=$(round(hp.τ_ref_input, digits=3))  τ_ref_output=$(round(hp.τ_ref_output, digits=3))")
+        println("   N=$(hp.N)  density=$(round(hp.density, digits=3))")
+        println("   inhib_density=$(round(hp.inhib_density, digits=3))  inhib_strength=$(round(hp.inhib_strength, digits=3))")
+    end
+end
 
