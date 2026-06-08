@@ -24,16 +24,16 @@ struct ConstantDist <: AbstractDist
     val::Float64
 end
 
-function init_ws(dist::ConstantDist, x::Int, y::Int)
+function init_ws(dist::ConstantDist, x::Int, y::Int, rng::AbstractRNG=Random.GLOBAL_RNG)
     return fill(dist.val, x, y)
 end
 
-function init_ws(dist::UniformDist, x::Int, y::Int)
-    return rand(Uniform(dist.a, dist.b), x, y)
+function init_ws(dist::UniformDist, x::Int, y::Int, rng::AbstractRNG=Random.GLOBAL_RNG)
+    return rand(rng, Uniform(dist.a, dist.b), x, y)
 end    
 
-function init_ws(dist::NormalDist, x::Int, y::Int)
-    return rand(Normal(dist.μ, dist.σ), x, y)
+function init_ws(dist::NormalDist, x::Int, y::Int, rng::AbstractRNG=Random.GLOBAL_RNG)
+    return rand(rng, Normal(dist.μ, dist.σ), x, y)
 end
 
 function _expand_vector_param(value, N::Int)

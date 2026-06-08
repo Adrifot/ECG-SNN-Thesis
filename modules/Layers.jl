@@ -105,9 +105,10 @@ struct SynapseLayer
         # TODO: Docstring
     """
     function SynapseLayer(prelayer::NeuronLayer, postlayer::NeuronLayer, template::Synapse;
-                         dist::AbstractDist, density::Float64, pre_idx::Int, post_idx::Int)
-        initw = clamp.(init_ws(dist, postlayer.N, prelayer.N), 0.01, template.wmax)
-        bitmask = rand(postlayer.N, prelayer.N) .< density
+                         dist::AbstractDist, density::Float64, pre_idx::Int, post_idx::Int,
+                         rng::AbstractRNG=Random.GLOBAL_RNG)
+        initw = clamp.(init_ws(dist, postlayer.N, prelayer.N, rng), 0.01, template.wmax)
+        bitmask = rand(rng, postlayer.N, prelayer.N) .< density
         initw .*= bitmask
 
         # Zero diagonal for lateral inhibition to prevent self-inhibition
