@@ -123,7 +123,7 @@ Apply a 4th-order Butterworth bandpass filter to a signal.
 """
 function get_filtered_signal(
             signal::AbstractVector{T}; 
-            lowcut::Float64=0.01, 
+            lowcut::Float64=0.5, 
             highcut::Float64=40.0, 
             fs::Float64=1000.0) where {T <: Real}
     pass = Bandpass(lowcut, highcut)
