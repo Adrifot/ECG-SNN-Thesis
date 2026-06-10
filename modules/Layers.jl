@@ -280,7 +280,9 @@ function propagate!(post::NeuronLayer, syn::SynapseLayer, fired::BitArray, post_
 
     # Apply weights
     w_impact = syn.isinhibitory ? -syn.ws : syn.ws
-    if post.isreverse w_impact *= -1 end
+    if post.isreverse && !syn.isinhibitory
+        w_impact = -w_impact
+    end
     post.i .+= sum(w_impact[:, fired], dims=2)[:]
 
     if freeze
