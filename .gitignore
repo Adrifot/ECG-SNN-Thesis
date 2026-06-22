@@ -1,6 +1,0 @@
-ecg-db/
-.*
-!.gitignore
-TODO.md
-tests/
-docs/latex/
