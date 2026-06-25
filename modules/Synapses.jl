@@ -1,7 +1,7 @@
 """
     Synapses.jl
 
-Definitions for the `Synapse`` type and its STDP functions.
+Definitions for the `Synapse` type and its STDP functions.
 """
 module Synapses
 
