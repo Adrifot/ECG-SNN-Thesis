@@ -87,10 +87,11 @@ function load_raw_signal(patient, session)
     !isfile(dat_path) && error("File not found: $(dat_path)")
     !isfile(hea_path) && error("Header not found: $(hea_path)")
 
-    first_line = readline(hea_path)
-    parts = split(first_line)
-    n_channels = parse(Int, parts[2])
-    n_samples = parse(Int, parts[4])
+    lines = readlines(hea_path)
+    n_samples = parse(Int, split(lines[1])[4])
+
+    dat_name = basename(dat_path)
+    n_channels = count(l -> !isempty(l) && first(split(l)) == dat_name, lines[2:end])
 
     raw_data = reinterpret(Int16, read(dat_path))
     expected = n_channels * n_samples
