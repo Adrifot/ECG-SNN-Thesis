@@ -59,28 +59,32 @@ function delta_modulation(
 end
 
 """
-    load_raw_signal(patient, session) -> Vector{Float64}
+    load_raw_signal(patient, session; lead=2) -> Vector{Float64}
 
 Load raw ECG data for a given patient and session.
 
 The function expects files stored as:
 
-    `./ecg-db/patient{patient}/{session}.dat`
+    `./ecg-db/patient{patient_id}/{session_id}.dat`
 
-The `.dat` file is assumed to contain 16 interleaved `Int16` channels.
-Channel 2 is extracted and returned as a `Vector{Float64}`.
+The `.dat` file holds the standard 12 leads as interleaved `Int16` channels.
+The requested lead is extracted and returned as a `Vector{Float64}`.
 
 # Arguments
 - `patient`: Patient identifier used in folder naming.
 - `session`: Session identifier corresponding to the `.dat` file.
+- `lead=2`: Lead to extract. Either a 1-based channel index (e.g. `2`) or a
+  lead name matching the header label, as a `String` or `Symbol`
+  (e.g. `"ii"`, `:v1`); name matching is case-insensitive.
 
 # Returns
-A `Vector{Float64}` containing samples from ECG channel 2.
+A `Vector{Float64}` containing samples from the requested lead.
 
 # Throws
-- `ErrorException` if the file does not exist.
+- `ErrorException` if a file is missing, the lead name is not found, or the
+  channel index is out of range.
 """
-function load_raw_signal(patient, session)
+function load_raw_signal(patient, session; lead::Union{Integer,AbstractString,Symbol}=2)
     dat_path = "./ecg-db/patient$(patient)/$(session).dat"
     hea_path = "./ecg-db/patient$(patient)/$(session).hea"
 
@@ -91,7 +95,23 @@ function load_raw_signal(patient, session)
     n_samples = parse(Int, split(lines[1])[4])
 
     dat_name = basename(dat_path)
-    n_channels = count(l -> !isempty(l) && first(split(l)) == dat_name, lines[2:end])
+    dat_specs = filter(l -> !isempty(l) && first(split(l)) == dat_name, lines[2:end])
+    n_channels = length(dat_specs)
+    lead_names = [last(split(l)) for l in dat_specs]
+
+    # resolve the requested lead to a 1-based channel index
+    if lead isa Integer
+        ch = Int(lead)
+        (1 ≤ ch ≤ n_channels) ||
+            error("Lead index $(ch) out of range 1:$(n_channels) for $(dat_name)")
+    else
+        name = lowercase(String(lead))
+        ch = findfirst(==(name), lowercase.(lead_names))
+        if ch === nothing
+            available = join(lead_names, ", ")
+            error("Lead \"$(lead)\" not found in $(dat_name); available: $(available)")
+        end
+    end
 
     raw_data = reinterpret(Int16, read(dat_path))
     expected = n_channels * n_samples
@@ -102,7 +122,6 @@ function load_raw_signal(patient, session)
     end
 
     data_matrix = reshape(raw_data, n_channels, :)
-    ch = min(2, n_channels)
     return Float64.(data_matrix[ch, :])
 end
 
