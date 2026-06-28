@@ -6,7 +6,8 @@ module Metrics
 using Statistics
 using Random
 
-export balanced_acc, ConfusionMatrix, gettotal, get_confusion_matrix, get_value_matrix
+export balanced_acc, ConfusionMatrix, gettotal, get_confusion_matrix, get_value_matrix,
+    kl_estimate
 
 """
     balanced_acc(TP, TN, FP, FN) -> Real
@@ -143,7 +144,7 @@ function kl_divergence(P::AbstractVector{<:Real}, Q::AbstractVector{<:Real})
             if Qᵢ > 0   
                 kl += Pᵢ * log(Pᵢ / Qᵢ)
             else
-                KL += Pᵢ & log(Pᵢ / 1e-8)
+                kl += Pᵢ * log(Pᵢ / 1e-8)
             end
         end
     end
