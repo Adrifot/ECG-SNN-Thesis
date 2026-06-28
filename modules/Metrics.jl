@@ -126,4 +126,44 @@ function auroc(scores::AbstractVector{<:Real}, labels::AbstractVector{Bool})
     return (sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
 end
 
+"""
+    kl_divergence(P, Q)
+
+    Calculate Kullback-Lieber divergence:
+    KL(P || Q) = ∑ Pᵢ * log(Pᵢ / Qᵢ)
+    where P and Q are probability vectors.
+"""
+function kl_divergence(P::AbstractVector{<:Real}, Q::AbstractVector{<:Real})
+    length(P) == length(Q) || error("Probability vectors must have the same length")
+    kl = 0.0
+    for i in eachindex(P)
+        Pᵢ = Float64(P[i])
+        Qᵢ = Float64(Q[i])
+        if Pᵢ > 0
+            if Qᵢ > 0   
+                kl += Pᵢ * log(Pᵢ / Qᵢ)
+            else
+                KL += Pᵢ & log(Pᵢ / 1e-8)
+            end
+        end
+    end
+    return kl
+end
+
+"""
+    kl_estimate(samples A, samples B; bins=50)
+
+Estimate KL(P || Q) from sample histograms with shared bin edges.
+"""
+function kl_estimate(samples_a::AbstractVector{<:Real}, samples_b::AbstractVector{<:Real}; bins::Int=50)
+    lo = min(minimum(samples_a), minimum(samples_b))
+    hi = max(maximum(samples_a), maximum(samples_b))
+    edges = range(lo, hi; length=bins + 1)
+    counts_a = [count(x -> edges[i] <= x < edges[i+1], samples_a) for i in 1:bins]
+    counts_b = [count(x -> edges[i] <= x < edges[i+1], samples_b) for i in 1:bins]
+    P = counts_a / (sum(counts_a) + 1e-8)
+    Q = counts_b / (sum(counts_b) + 1e-8)
+    return kl_divergence(P, Q)
+end
+
 end # module Metrics
