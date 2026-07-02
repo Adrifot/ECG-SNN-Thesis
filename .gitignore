@@ -2,6 +2,7 @@
 ecg-db/
 tests/
 docs/latex/
+docs/presentation/
 *.pdf
 figures/cache/
 legacy/
