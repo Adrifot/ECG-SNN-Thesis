@@ -1,5 +1,5 @@
 """
-    ClassificationMetrics.jl
+    Metrics.jl
 
 Imbalance-aware classification metrics for the ECG anomaly-detection network.
 
@@ -23,7 +23,7 @@ Provides:
 - `auroc`, `average_precision`                     — threshold-free ranking metrics
 - `summarize`                                      — NamedTuple of everything at once
 """
-module ClassificationMetrics
+module Metrics
 
 using Statistics
 using Random
