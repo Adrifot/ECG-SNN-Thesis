@@ -1,6 +1,12 @@
 """
     Layers.jl
-# TODO: Module docstring
+
+A module defining layered spiking neural network components and simulation routines.
+
+# Exports:
+- `NeuronLayer` struct: represents a layer of neurons built using a `Neuron` struct as a template with variations to some characteristic values.
+- `SynapseLayer` struct: similar to `NeuronLayer`, but for Synapses. Supports recurrent connections and lateral inhibition.
+- `update!`, `update_post!`, `propagate!`, `runlayers!` functions used for the STDP logic and simulation.
 """
 module Layers
 
