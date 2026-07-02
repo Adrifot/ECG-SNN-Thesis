@@ -13,7 +13,7 @@ including bandpass filtering and delta modulation spike encoding.
 """
 module Signals
 
-export get_spiketrain, load_raw_signal, get_filtered_signal, get_R_peaks, segment_beats, normalize_beat
+export get_spiketrain, load_raw_signal, get_filtered_signal, get_R_peaks, segment_beats, normalize_beat, delta_modulation
 
 include("Neurons.jl")
 using .Neurons
@@ -59,38 +59,59 @@ function delta_modulation(
 end
 
 """
-    load_raw_signal(patient, session) -> Vector{Float64}
+    load_raw_signal(patient, session; lead=2) -> Vector{Float64}
 
 Load raw ECG data for a given patient and session.
 
 The function expects files stored as:
 
-    `./ecg-db/patient{patient}/{session}.dat`
+    `./ecg-db/patient{patient_id}/{session_id}.dat`
 
-The `.dat` file is assumed to contain 16 interleaved `Int16` channels.
-Channel 2 is extracted and returned as a `Vector{Float64}`.
+The `.dat` file holds the standard 12 leads as interleaved `Int16` channels.
+The requested lead is extracted and returned as a `Vector{Float64}`.
 
 # Arguments
 - `patient`: Patient identifier used in folder naming.
 - `session`: Session identifier corresponding to the `.dat` file.
+- `lead=2`: Lead to extract. Either a 1-based channel index (e.g. `2`) or a
+  lead name matching the header label, as a `String` or `Symbol`
+  (e.g. `"ii"`, `:v1`); name matching is case-insensitive.
 
 # Returns
-A `Vector{Float64}` containing samples from ECG channel 2.
+A `Vector{Float64}` containing samples from the requested lead.
 
 # Throws
-- `ErrorException` if the file does not exist.
+- `ErrorException` if a file is missing, the lead name is not found, or the
+  channel index is out of range.
 """
-function load_raw_signal(patient, session)
+function load_raw_signal(patient, session; lead::Union{Integer,AbstractString,Symbol}=2)
     dat_path = "./ecg-db/patient$(patient)/$(session).dat"
     hea_path = "./ecg-db/patient$(patient)/$(session).hea"
 
     !isfile(dat_path) && error("File not found: $(dat_path)")
     !isfile(hea_path) && error("Header not found: $(hea_path)")
 
-    first_line = readline(hea_path)
-    parts = split(first_line)
-    n_channels = parse(Int, parts[2])
-    n_samples = parse(Int, parts[4])
+    lines = readlines(hea_path)
+    n_samples = parse(Int, split(lines[1])[4])
+
+    dat_name = basename(dat_path)
+    dat_specs = filter(l -> !isempty(l) && first(split(l)) == dat_name, lines[2:end])
+    n_channels = length(dat_specs)
+    lead_names = [last(split(l)) for l in dat_specs]
+
+    # resolve the requested lead to a 1-based channel index
+    if lead isa Integer
+        ch = Int(lead)
+        (1 ≤ ch ≤ n_channels) ||
+            error("Lead index $(ch) out of range 1:$(n_channels) for $(dat_name)")
+    else
+        name = lowercase(String(lead))
+        ch = findfirst(==(name), lowercase.(lead_names))
+        if ch === nothing
+            available = join(lead_names, ", ")
+            error("Lead \"$(lead)\" not found in $(dat_name); available: $(available)")
+        end
+    end
 
     raw_data = reinterpret(Int16, read(dat_path))
     expected = n_channels * n_samples
@@ -101,7 +122,6 @@ function load_raw_signal(patient, session)
     end
 
     data_matrix = reshape(raw_data, n_channels, :)
-    ch = min(2, n_channels)
     return Float64.(data_matrix[ch, :])
 end
 
@@ -123,7 +143,7 @@ Apply a 4th-order Butterworth bandpass filter to a signal.
 """
 function get_filtered_signal(
             signal::AbstractVector{T}; 
-            lowcut::Float64=0.01, 
+            lowcut::Float64=0.5, 
             highcut::Float64=40.0, 
             fs::Float64=1000.0) where {T <: Real}
     pass = Bandpass(lowcut, highcut)
@@ -133,34 +153,24 @@ end
 
 
 """
-    get_spiketrain(patient, session; Δ=100)
-        -> (spiketrain::Vector{Spike}, 
-            signal_length::Integer, 
-            filtered_signal::AbstractVector{T<:Real})
-            
-
-Load ECG data, apply bandpass filtering, and compute a delta-modulated spiketrain.
-
-# Arguments
-- `patient`: Patient identifier.
-- `session`: Session identifier.
-- `Δ::Float64=0.1`: Threshold parameter used in delta modulation.
-- `fs::Float64=1000.0`: Signal sampling frequency.
-
-# Returns
-A tuple containing:
-1. `spiketrain::Vector{Spike}`: Encoded spike representation.
-2. `signal_length::Integer`: Length of the filtered signal.
-3. `filtered_signal::Vector{T<:Real}`: Bandpass-filtered ECG signal.
+# TODO: docstring
 """
-function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0)
+function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, gap::Float64=100.0)
     raw_sig = load_raw_signal(patient, session)
     filt_sig = get_filtered_signal(raw_sig)
     peaks = get_R_peaks(filt_sig; fs=fs)
     beats = segment_beats(filt_sig, peaks; fs=fs)
     beats_norm = normalize_beat.(beats)
-    spiketrain = vcat(delta_modulation.(beats_norm; Δ=Δ)...)
 
+    spiketrain = Spike[]
+    offset = 0.0
+    for beat in beats_norm
+        beat_spikes = delta_modulation(beat; Δ=Δ)
+        for s in beat_spikes
+            push!(spiketrain, Spike(s.time + offset, s.polarity, s.src_name))
+        end
+        offset += length(beat) + gap
+    end
     return spiketrain, length(filt_sig), filt_sig
 end
 
