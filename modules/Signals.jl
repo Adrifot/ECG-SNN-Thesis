@@ -4,7 +4,7 @@
 Utilities for loading and preprocessing ECG recordings,
 including bandpass filtering and delta modulation spike encoding.
 
-# Provides #TODO: add newly added functions
+# Provides 
 - `delta_modulation`: Delta-modulator function.
 - `load_raw_signal`: ECG data loader function.
 - `get_filtered_signal`: Signal filtering function.
