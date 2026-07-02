@@ -153,7 +153,22 @@ end
 
 
 """
-# TODO: docstring
+    get_spiketrain(patient, session; Δ=0.1, fs=1000.0, gap=100.0) -> Vector{Spike}
+
+Convert an ECG recording into a spike train by loading the raw signal, filtering it,
+extracting beat locations, normalizing each beat, and applying delta modulation.
+
+# Arguments
+- `patient`: Patient identifier used to locate the ECG file.
+- `session`: Session identifier used to locate the ECG file.
+- `Δ::Float64=0.1`: Step size threshold for delta modulation.
+- `fs::Float64=1000.0`: Sampling frequency used for beat segmentation.
+- `gap::Float64=100.0`: Gap inserted between consecutive beat spike trains.
+
+# Returns
+- `Vector{Spike}`: Spike train representing the encoded ECG signal.
+- `Int`: Length of the filtered signal.
+- `Vector{Float64}`: Filtered ECG signal.
 """
 function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, gap::Float64=100.0)
     raw_sig = load_raw_signal(patient, session)
@@ -175,7 +190,17 @@ function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, g
 end
 
 """
-#TODO: docstring
+    get_R_peaks(signal; fs=1000.0, min_d=100) -> Vector{Int}
+
+Detect R-peak locations in an ECG signal using a smoothed derivative-based approach.
+
+# Arguments
+- `signal::AbstractVector{T}`: Input ECG signal.
+- `fs::Float64=1000.0`: Sampling frequency of the signal.
+- `min_d::Int=100`: Minimum distance between detected peaks in samples.
+
+# Returns
+- `Vector{Int}`: Indices of detected R-peaks.
 """
 function get_R_peaks(
             signal::AbstractVector{T}; 
@@ -213,7 +238,19 @@ function get_R_peaks(
 end
 
 """
-# TODO: docstring
+    segment_beats(signal, peaks; fs=1000.0, pre_r=0.25, post_r=0.45) -> Vector{Vector{Float64}}
+
+Segment an ECG signal into beat windows centered on detected R-peaks.
+
+# Arguments
+- `signal::AbstractVector{T}`: Input ECG signal.
+- `peaks::Vector{Int}`: Detected R-peak indices.
+- `fs::Float64=1000.0`: Sampling frequency of the signal.
+- `pre_r::Float64=0.25`: Number of seconds to include before each R-peak.
+- `post_r::Float64=0.45`: Number of seconds to include after each R-peak.
+
+# Returns
+- `Vector{Vector{Float64}}`: List of beat segments.
 """
 function segment_beats(
             signal::AbstractVector{T}, 
@@ -237,7 +274,15 @@ function segment_beats(
 end
 
 """
-# TODO: docstring
+    normalize_beat(beat) -> Vector{Float64}
+
+Normalize a single ECG beat to the unit interval by rescaling its range to [0, 1].
+
+# Arguments
+- `beat::Vector{Float64}`: A single ECG beat vector.
+
+# Returns
+- `Vector{Float64}`: Normalized beat values.
 """
 function normalize_beat(beat::Vector{Float64})
     low, high = minimum(beat), maximum(beat)
