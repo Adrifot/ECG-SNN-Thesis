@@ -58,11 +58,11 @@ const R_IDX       = round(Int, PRE_R * FS) + 1
 const TSIM        = 7.0        # seconds of network time (kept short: past ~8s both
                                 # conditions saturate to a fully-LTD-collapsed weight
                                 # matrix regardless of input, which is uninteresting)
-const SNAPSHOT_DT = 0.025      # animation frame spacing
+const SNAPSHOT_DT = 0.025     # animation frame spacing
 const RASTER_WIN  = 2.0        # trailing window shown in the scrolling rasters
-const FPS         = 15
+const FPS         = 20
 const NET_SEED    = 20240      # identical init for both conditions -> fair comparison
-const PICK_SEED   = 7
+const PICK_SEED   = 2
 
 seg_base(t) = t < R_IDX - 60 ? 0 : (t <= R_IDX + 80 ? 2 : 4)
 
