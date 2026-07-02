@@ -12,10 +12,10 @@ Readout: per-output-neuron firing-rate vector -> cross-validated diagonal LDA.
 include("../modules/Layers.jl")
 include("../modules/Signals.jl")
 include("../modules/Registry.jl")
-include("../modules/ClassificationMetrics.jl")
+include("../modules/Metrics.jl")
 
 using .Signals, .Layers, .Layers.Neurons, .Layers.Synapses, .Layers.Utils,
-      .Registry, .ClassificationMetrics
+      .Registry, .Metrics
 using Statistics, Random, ProgressMeter
 using StatsBase: sample
 
