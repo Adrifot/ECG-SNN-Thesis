@@ -340,4 +340,4 @@ function summarize(y_true::AbstractVector{Bool}, y_pred::AbstractVector{Bool};
     )
 end
 
-end # module ClassificationMetrics
+end # module Metrics
