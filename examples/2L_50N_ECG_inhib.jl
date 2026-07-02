@@ -50,7 +50,7 @@ input_pulses = zeros(nsteps)
 for spike in spiketrain
     step = Int(floor(((spike.time - 1.0) / fs) / dt)) + 1
     if 1 <= step <= nsteps
-        input_pulses[step] += spike.polarity ? pulse_amp : pulse_amp # HACK: Consider polarity in the future
+        input_pulses[step] += pulse_amp # polarity not considered here
     end
 end
 

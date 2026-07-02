@@ -1,6 +1,13 @@
 """
     Layers.jl
-# TODO: Module docstring
+
+Layered spiking neural network components and simulation routines.
+
+# Provides
+- `NeuronLayer`: A layer of neurons initialized from a `Neuron` template with optional parameter noise.
+- `SynapseLayer`: A layer of synapses connecting neuron layers, including STDP-based learning.
+- `LayeredNetwork`: A container for alternating neuron and synapse layers.
+- `update!`, `propagate!`, `update_post!`, and `runlayers!`: Simulation and learning routines.
 """
 module Layers
 
@@ -18,7 +25,22 @@ using LinearAlgebra
 
 """
     NeuronLayer
-# TODO: Docstring
+
+A layer of spiking neurons initialized from a template neuron and configurable noise settings.
+
+# Fields
+- `N::Int`: Number of neurons in the layer.
+- `name::String`: Layer identifier.
+- `V_rest::Float64`: Resting membrane potential.
+- `V_thresh::Vector{Float64}`: Per-neuron spike thresholds.
+- `V_reset::Float64`: Reset potential after firing.
+- `R_m::Vector{Float64}`: Per-neuron membrane resistances.
+- `τ_m::Vector{Float64}`: Per-neuron membrane time constants.
+- `τ_s::Float64`: Synaptic current decay constant.
+- `τ_ref::Float64`: Refractory period.
+- `τ_pretrace::Float64`: Pre-synaptic trace time constant.
+- `τ_posttrace::Float64`: Post-synaptic trace time constant.
+- `isreverse::Bool`: Whether the layer responds to antispikes.
 """
 struct NeuronLayer
     N::Int
@@ -42,7 +64,18 @@ struct NeuronLayer
     t_lastout::Vector{Float64}
 
     @doc"""
-    # TODO: docstring
+        NeuronLayer(N, template; kwargs...) -> NeuronLayer
+
+    Construct a neuron layer from a template neuron definition.
+
+    # Arguments
+    - `N::Int`: Number of neurons to create.
+    - `template::Neuron`: Template neuron whose parameters are copied and optionally perturbed.
+    - `name::String="Layer"`: Optional layer identifier.
+    - `V_thresh_dev::Float64=0.0`: Noise scale applied to thresholds.
+    - `R_m_dev::Float64=0.0`: Noise scale applied to membrane resistances.
+    - `τ_m_dev::Float64=0.0`: Noise scale applied to membrane time constants.
+    - `rng::AbstractRNG=Random.GLOBAL_RNG`: Random number generator for sampling noise.
     """
     function NeuronLayer(
         N::Int,
@@ -90,7 +123,17 @@ end
 
 """
     SynapseLayer
-# TODO: Docstring
+
+A layer of synapses connecting two neuron layers, including weight initialization and learning behavior.
+
+# Fields
+- `ws::Matrix{Float64}`: Synaptic weight matrix.
+- `wmax::Float64`: Maximum allowed synaptic weight.
+- `learningrate::Float64`: Learning rate used for STDP updates.
+- `isinhibitory::Bool`: Whether the synapses are inhibitory.
+- `delay::Float64`: Synaptic delay.
+- `pre_idx::Int`: Index of the presynaptic neuron layer in the network.
+- `post_idx::Int`: Index of the postsynaptic neuron layer in the network.
 """
 struct SynapseLayer
     ws::Matrix{Float64}
@@ -102,7 +145,19 @@ struct SynapseLayer
     post_idx::Int
 
     @doc"""
-        # TODO: Docstring
+        SynapseLayer(prelayer, postlayer, template; kwargs...) -> SynapseLayer
+
+    Construct a synapse layer between two neuron layers using a synapse template.
+
+    # Arguments
+    - `prelayer::NeuronLayer`: Presynaptic neuron layer.
+    - `postlayer::NeuronLayer`: Postsynaptic neuron layer.
+    - `template::Synapse`: Synapse template used for initialization.
+    - `dist::AbstractDist`: Distribution used to sample initial weights.
+    - `density::Float64`: Connection density.
+    - `pre_idx::Int`: Index of the presynaptic layer in the network.
+    - `post_idx::Int`: Index of the postsynaptic layer in the network.
+    - `rng::AbstractRNG=Random.GLOBAL_RNG`: Random number generator used for initialization.
     """
     function SynapseLayer(prelayer::NeuronLayer, postlayer::NeuronLayer, template::Synapse;
                          dist::AbstractDist, density::Float64, pre_idx::Int, post_idx::Int,

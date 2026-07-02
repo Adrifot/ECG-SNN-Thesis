@@ -127,9 +127,6 @@ end
     step!(connectome, dt, t)
     
 Advance the state of the network by one time step. 
-
-# Behavior
-# TODO: document behavior
 """
 function step!(net::Network, dt::Float64, t::Float64)
     N = length(net.neurons)

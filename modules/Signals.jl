@@ -4,7 +4,7 @@
 Utilities for loading and preprocessing ECG recordings,
 including bandpass filtering and delta modulation spike encoding.
 
-# Provides #TODO: add newly added functions
+# Provides 
 - `delta_modulation`: Delta-modulator function.
 - `load_raw_signal`: ECG data loader function.
 - `get_filtered_signal`: Signal filtering function.
@@ -13,7 +13,7 @@ including bandpass filtering and delta modulation spike encoding.
 """
 module Signals
 
-export get_spiketrain, load_raw_signal, get_filtered_signal, get_R_peaks, segment_beats, normalize_beat
+export get_spiketrain, load_raw_signal, get_filtered_signal, get_R_peaks, segment_beats, normalize_beat, delta_modulation
 
 include("Neurons.jl")
 using .Neurons
@@ -59,38 +59,59 @@ function delta_modulation(
 end
 
 """
-    load_raw_signal(patient, session) -> Vector{Float64}
+    load_raw_signal(patient, session; lead=2) -> Vector{Float64}
 
 Load raw ECG data for a given patient and session.
 
 The function expects files stored as:
 
-    `./ecg-db/patient{patient}/{session}.dat`
+    `./ecg-db/patient{patient_id}/{session_id}.dat`
 
-The `.dat` file is assumed to contain 16 interleaved `Int16` channels.
-Channel 2 is extracted and returned as a `Vector{Float64}`.
+The `.dat` file holds the standard 12 leads as interleaved `Int16` channels.
+The requested lead is extracted and returned as a `Vector{Float64}`.
 
 # Arguments
 - `patient`: Patient identifier used in folder naming.
 - `session`: Session identifier corresponding to the `.dat` file.
+- `lead=2`: Lead to extract. Either a 1-based channel index (e.g. `2`) or a
+  lead name matching the header label, as a `String` or `Symbol`
+  (e.g. `"ii"`, `:v1`); name matching is case-insensitive.
 
 # Returns
-A `Vector{Float64}` containing samples from ECG channel 2.
+A `Vector{Float64}` containing samples from the requested lead.
 
 # Throws
-- `ErrorException` if the file does not exist.
+- `ErrorException` if a file is missing, the lead name is not found, or the
+  channel index is out of range.
 """
-function load_raw_signal(patient, session)
+function load_raw_signal(patient, session; lead::Union{Integer,AbstractString,Symbol}=2)
     dat_path = "./ecg-db/patient$(patient)/$(session).dat"
     hea_path = "./ecg-db/patient$(patient)/$(session).hea"
 
     !isfile(dat_path) && error("File not found: $(dat_path)")
     !isfile(hea_path) && error("Header not found: $(hea_path)")
 
-    first_line = readline(hea_path)
-    parts = split(first_line)
-    n_channels = parse(Int, parts[2])
-    n_samples = parse(Int, parts[4])
+    lines = readlines(hea_path)
+    n_samples = parse(Int, split(lines[1])[4])
+
+    dat_name = basename(dat_path)
+    dat_specs = filter(l -> !isempty(l) && first(split(l)) == dat_name, lines[2:end])
+    n_channels = length(dat_specs)
+    lead_names = [last(split(l)) for l in dat_specs]
+
+    # resolve the requested lead to a 1-based channel index
+    if lead isa Integer
+        ch = Int(lead)
+        (1 ≤ ch ≤ n_channels) ||
+            error("Lead index $(ch) out of range 1:$(n_channels) for $(dat_name)")
+    else
+        name = lowercase(String(lead))
+        ch = findfirst(==(name), lowercase.(lead_names))
+        if ch === nothing
+            available = join(lead_names, ", ")
+            error("Lead \"$(lead)\" not found in $(dat_name); available: $(available)")
+        end
+    end
 
     raw_data = reinterpret(Int16, read(dat_path))
     expected = n_channels * n_samples
@@ -101,7 +122,6 @@ function load_raw_signal(patient, session)
     end
 
     data_matrix = reshape(raw_data, n_channels, :)
-    ch = min(2, n_channels)
     return Float64.(data_matrix[ch, :])
 end
 
@@ -133,7 +153,22 @@ end
 
 
 """
-# TODO: docstring
+    get_spiketrain(patient, session; Δ=0.1, fs=1000.0, gap=100.0) -> Vector{Spike}
+
+Convert an ECG recording into a spike train by loading the raw signal, filtering it,
+extracting beat locations, normalizing each beat, and applying delta modulation.
+
+# Arguments
+- `patient`: Patient identifier used to locate the ECG file.
+- `session`: Session identifier used to locate the ECG file.
+- `Δ::Float64=0.1`: Step size threshold for delta modulation.
+- `fs::Float64=1000.0`: Sampling frequency used for beat segmentation.
+- `gap::Float64=100.0`: Gap inserted between consecutive beat spike trains.
+
+# Returns
+- `Vector{Spike}`: Spike train representing the encoded ECG signal.
+- `Int`: Length of the filtered signal.
+- `Vector{Float64}`: Filtered ECG signal.
 """
 function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, gap::Float64=100.0)
     raw_sig = load_raw_signal(patient, session)
@@ -155,7 +190,17 @@ function get_spiketrain(patient, session; Δ::Float64=0.1, fs::Float64=1000.0, g
 end
 
 """
-#TODO: docstring
+    get_R_peaks(signal; fs=1000.0, min_d=100) -> Vector{Int}
+
+Detect R-peak locations in an ECG signal using a smoothed derivative-based approach.
+
+# Arguments
+- `signal::AbstractVector{T}`: Input ECG signal.
+- `fs::Float64=1000.0`: Sampling frequency of the signal.
+- `min_d::Int=100`: Minimum distance between detected peaks in samples.
+
+# Returns
+- `Vector{Int}`: Indices of detected R-peaks.
 """
 function get_R_peaks(
             signal::AbstractVector{T}; 
@@ -193,7 +238,19 @@ function get_R_peaks(
 end
 
 """
-# TODO: docstring
+    segment_beats(signal, peaks; fs=1000.0, pre_r=0.25, post_r=0.45) -> Vector{Vector{Float64}}
+
+Segment an ECG signal into beat windows centered on detected R-peaks.
+
+# Arguments
+- `signal::AbstractVector{T}`: Input ECG signal.
+- `peaks::Vector{Int}`: Detected R-peak indices.
+- `fs::Float64=1000.0`: Sampling frequency of the signal.
+- `pre_r::Float64=0.25`: Number of seconds to include before each R-peak.
+- `post_r::Float64=0.45`: Number of seconds to include after each R-peak.
+
+# Returns
+- `Vector{Vector{Float64}}`: List of beat segments.
 """
 function segment_beats(
             signal::AbstractVector{T}, 
@@ -217,7 +274,15 @@ function segment_beats(
 end
 
 """
-# TODO: docstring
+    normalize_beat(beat) -> Vector{Float64}
+
+Normalize a single ECG beat to the unit interval by rescaling its range to [0, 1].
+
+# Arguments
+- `beat::Vector{Float64}`: A single ECG beat vector.
+
+# Returns
+- `Vector{Float64}`: Normalized beat values.
 """
 function normalize_beat(beat::Vector{Float64})
     low, high = minimum(beat), maximum(beat)

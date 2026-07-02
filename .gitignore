@@ -1,3 +1,7 @@
 .*/
 ecg-db/
 tests/
+docs/latex/
+*.pdf
+figures/cache/
+legacy/

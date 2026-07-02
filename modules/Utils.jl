@@ -1,6 +1,7 @@
 """
     Utils.jl
-# TODO: Docstring
+
+Utility helpers for initializing and perturbing network parameters.
 """
 module Utils
 export AbstractDist, NormalDist, ConstantDist, UniformDist, init_ws, _expand_vector_param, _vector_with_noise
