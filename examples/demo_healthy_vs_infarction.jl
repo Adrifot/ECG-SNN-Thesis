@@ -27,7 +27,7 @@ using StatsBase: sample
 gr()
 
 # ----- Winning params (from confirm_routed_multilead.jl) -----
-const Δ            = 0.12970001789262522
+const Δ            = 0.1
 const pulse_amp    = 170.48121762522024
 const ltp_rate     = 0.18935145456196095
 const ltp_rate_out = 0.08378635445090134
@@ -248,6 +248,18 @@ isdir(imgdir) || mkpath(imgdir)
 gifpath = joinpath(imgdir, "demo_healthy_vs_infarction.gif")
 gif(anim, gifpath, fps=FPS)
 println("Saved animation to $(gifpath)")
+
+# Opt-in: dump the individual frames (reused from the animation, no extra render
+# cost) so the Beamer deck can embed them via \animategraphics. Enable with:
+#   DEMO_FRAMES=1 julia --project=. examples/demo_healthy_vs_infarction.jl
+if get(ENV, "DEMO_FRAMES", "0") == "1"
+    framedir = joinpath(@__DIR__, "../docs/presentation/frames")
+    isdir(framedir) ? foreach(f -> rm(joinpath(framedir, f)), readdir(framedir)) : mkpath(framedir)
+    for (i, f) in enumerate(anim.frames)
+        cp(joinpath(anim.dir, f), joinpath(framedir, "frame-$(lpad(i-1, 3, '0')).png"); force=true)
+    end
+    println("Saved $(length(anim.frames)) frames to $(framedir) (fps=$(FPS))")
+end
 
 final = plot(
     weight_heatmap(res_h.weight_history[end]; title="Healthy — final weights"),
