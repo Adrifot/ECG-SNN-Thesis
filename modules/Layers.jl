@@ -1,7 +1,7 @@
 """
     Layers.jl
 
-A module defining layered spiking neural network components and simulation routines.
+Layered spiking neural network components and simulation routines.
 
 # Exports:
 - `NeuronLayer` struct: represents a layer of neurons built using a `Neuron` struct as a template with variations to some characteristic values.
